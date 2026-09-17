@@ -5,7 +5,7 @@
 POST/users
 POST/session(Auth)
 
-
+Todo MinIO
 POST{metadaten}/docs
 GET{metadten}/docs
 GET{metadaten}/docs/{id}
