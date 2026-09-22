@@ -1,32 +1,33 @@
 # swendoc
 
-*REST API Struktur*
-
-POST/users
-POST/session(Auth)
-
-Todo MinIO
-POST{metadaten}/docs
-GET{metadten}/docs
-GET{metadaten}/docs/{id}
-PUT{metadaten}/docs/{id}
-DELETE{metadaten}/docs/{id}
+Dokumentenverwaltung: Spring Boot REST API, PostgreSQL via JPA/Hibernate,
+MinIO fuer die Datei-Blobs.
 
 ## Starten
 
-Docker Desktop muss laufen. `./mvnw spring-boot:run` startet Postgres und MinIO
-via `compose.yaml` automatisch mit und faehrt sie beim Beenden wieder herunter.
+Alles in Containern (REST-Server, PostgreSQL, MinIO):
 
 ```
-./mvnw spring-boot:run     # App auf http://localhost:8080
-./mvnw test                # Tests, laufen ohne Docker (H2)
+docker compose up --build   # API auf http://localhost:8080
 ```
 
-MinIO Console: http://localhost:9001 (minioadmin / minioadmin)
-
-## Implementiert
+Nur die Infrastruktur im Container, App lokal:
 
 ```
+docker compose up -d postgres minio
+./mvnw spring-boot:run      # API auf http://localhost:8080
+./mvnw test                 # Tests, laufen ohne Docker (H2)
+```
+
+PostgreSQL: `localhost:5433` (swendoc / secret), 5432 bleibt fuer die lokale
+Homebrew-Instanz frei. MinIO Console: http://localhost:9001 (minioadmin / minioadmin)
+
+## REST API
+
+```
+POST   /users             {"username": "...", "password": "..."}  -> 201
+POST   /session           {"username": "...", "password": "..."}  -> Token
+
 POST   /docs              multipart: title, file
 GET    /docs
 GET    /docs/{id}         Metadaten
@@ -35,4 +36,17 @@ PUT    /docs/{id}         {"title": "..."}
 DELETE /docs/{id}
 ```
 
-Offen: `POST /users`, `POST /session`.
+Request- und Response-Bodies gehen ueber DTOs, nicht ueber die Entities:
+`DocumentResponse`, `UserResponse`, `SessionResponse`, `CredentialsRequest`,
+`TitleRequest`. So verlaesst weder `passwordHash` noch der MinIO-`objectKey`
+jemals den Server.
+
+## Persistenz
+
+JPA/Hibernate mappt `Document`, `User` und `Session` auf PostgreSQL. Der Zugriff
+laeuft ueber das Repository Pattern: `DocumentRepository`, `UserRepository` und
+`SessionRepository` erweitern `JpaRepository`. Die Daten liegen im Docker-Volume
+`postgres-data` und ueberleben `docker compose down`.
+
+Passwoerter werden mit PBKDF2-HMAC-SHA256 (210k Iterationen, zufaelligem Salt)
+gehasht. Das Session-Token wird ausgegeben, aber noch nicht auf `/docs` erzwungen.
