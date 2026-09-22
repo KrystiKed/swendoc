@@ -1,7 +1,9 @@
 package at.technikum.swendoc.document;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.core.io.InputStreamResource;
@@ -26,9 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Validated
 public class DocumentController {
 
-    public record TitleUpdate(@NotBlank String title) {
-    }
-
     private final DocumentService service;
 
     public DocumentController(DocumentService service) {
@@ -36,23 +35,24 @@ public class DocumentController {
     }
 
     @GetMapping
-    public List<Document> list() {
-        return service.findAll();
+    public List<DocumentResponse> list() {
+        return service.findAll().stream().map(DocumentResponse::from).toList();
     }
 
     @GetMapping("/{id}")
-    public Document get(@PathVariable UUID id) {
-        return service.find(id);
+    public DocumentResponse get(@PathVariable UUID id) {
+        return DocumentResponse.from(service.find(id));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Document> upload(@RequestParam @NotBlank String title,
-                                           @RequestPart MultipartFile file) throws Exception {
+    public ResponseEntity<DocumentResponse> upload(@RequestParam @NotBlank String title,
+                                                   @RequestPart MultipartFile file) throws Exception {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
         Document saved = service.upload(title, file);
-        return ResponseEntity.created(java.net.URI.create("/docs/" + saved.getId())).body(saved);
+        return ResponseEntity.created(URI.create("/docs/" + saved.getId()))
+                .body(DocumentResponse.from(saved));
     }
 
     /** The bytes themselves; GET /docs/{id} stays metadata-only. */
@@ -71,8 +71,8 @@ public class DocumentController {
     }
 
     @PutMapping("/{id}")
-    public Document rename(@PathVariable UUID id, @RequestBody @jakarta.validation.Valid TitleUpdate update) {
-        return service.rename(id, update.title());
+    public DocumentResponse rename(@PathVariable UUID id, @RequestBody @Valid TitleRequest request) {
+        return DocumentResponse.from(service.rename(id, request.title()));
     }
 
     @DeleteMapping("/{id}")
