@@ -2,6 +2,8 @@ package at.technikum.swendoc.document;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
@@ -25,6 +27,10 @@ public class Document {
     /** Key of the blob in the MinIO bucket. */
     private String objectKey;
 
+    /** Detected from the file on upload; null for anything that is not Word, PDF or Excel. */
+    @Enumerated(EnumType.STRING)
+    private DocumentType documentType;
+
     protected Document() {
     }
 
@@ -35,6 +41,7 @@ public class Document {
         this.size = size;
         this.objectKey = objectKey;
         this.uploadedAt = Instant.now();
+        this.documentType = DocumentType.detect(filename, contentType).orElse(null);
     }
 
     public UUID getId() {
@@ -67,5 +74,9 @@ public class Document {
 
     public String getObjectKey() {
         return objectKey;
+    }
+
+    public DocumentType getDocumentType() {
+        return documentType;
     }
 }

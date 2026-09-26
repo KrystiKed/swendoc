@@ -4,7 +4,6 @@ import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +61,10 @@ public class DocumentService {
         Document document = find(id);
         document.setTitle(title);
         return repository.save(document);
+    }
+
+    public List<Document> findByType(DocumentType type) {
+        return repository.findByDocumentType(type);
     }
 
     // ponytail: blob is removed after the row commits; an orphaned blob on a crash here is

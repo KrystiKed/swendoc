@@ -34,7 +34,14 @@ GET    /docs/{id}         Metadaten
 GET    /docs/{id}/content Datei-Download
 PUT    /docs/{id}         {"title": "..."}
 DELETE /docs/{id}
+
+GET    /documents/group       ["WORD", "PDF", "EXCEL"]
+GET    /documents/group/{id}  alle Dokumente eines Typs: word | pdf | excel, sonst 404
 ```
+
+Der Typ wird beim Upload automatisch erkannt (Content-Type, sonst Dateiendung
+.doc/.docx, .pdf, .xls/.xlsx). Andere Dateien werden gespeichert, haben aber
+keinen Typ und tauchen in keiner Gruppe auf.
 
 Request- und Response-Bodies gehen ueber DTOs, nicht ueber die Entities:
 `DocumentResponse`, `UserResponse`, `SessionResponse`, `CredentialsRequest`,
