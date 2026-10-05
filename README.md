@@ -19,6 +19,19 @@ docker compose up -d postgres minio
 ./mvnw test                 # Tests, laufen ohne Docker (H2)
 ```
 
+Frontend (Angular, `frontend/`) im Dev-Modus, API-Calls werden per
+`proxy.conf.json` an `localhost:8080` weitergeleitet:
+
+```
+cd frontend && npm install
+npx ng serve                # UI auf http://localhost:4200
+npx ng test                 # Frontend-Tests (Vitest)
+```
+
+Im Docker-Image wird das Frontend gebaut und von Spring Boot unter
+http://localhost:8080 ausgeliefert. Erstes Login: "New Account..." legt einen
+User an (Passwort min. 8 Zeichen).
+
 PostgreSQL: `localhost:5433` (swendoc / secret), 5432 bleibt fuer die lokale
 Homebrew-Instanz frei. MinIO Console: http://localhost:9001 (minioadmin / minioadmin)
 
