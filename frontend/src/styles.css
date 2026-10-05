@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+/* Tokens from the Stitch "WinDoc" design (index.html + documents.html). */
+@theme {
+  --font-sans: 'Inter', Tahoma, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-headline: 'Space Grotesk', sans-serif;
+
+  --color-win-bg: #d4d0c8;
+  --color-win-dark: #808080;
+  --color-win-light: #ffffff;
+  --color-win-navy: #000080;
+  --color-win-teal: #008080;
+  --color-win-navy-gradient: #1084d0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-win-bg);
+}
+
+/* Windows 95/98/2000 bevels */
+.win-outset {
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+}
+
+.win-inset {
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  box-shadow: inset 1px 1px 0 #000000, inset -1px -1px 0 #dfdfdf;
+}
+
+.win-btn {
+  background-color: var(--color-win-bg);
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf;
+  cursor: pointer;
+}
+
+.win-btn:active:not(:disabled) {
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  box-shadow: inset 1px 1px 0 #000000;
+}
+
+.win-btn:disabled {
+  color: #808080;
+  cursor: default;
+}
+
+.win-btn:focus-visible {
+  outline: 1px dotted #000000;
+  outline-offset: -4px;
+}
+
+.win-header-cell {
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-right: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  background-color: var(--color-win-bg);
+}
+
+.win-titlebar {
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+}
