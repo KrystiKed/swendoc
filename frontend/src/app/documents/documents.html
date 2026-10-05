@@ -1,0 +1,209 @@
+<div class="bg-win-bg text-black font-sans text-xs min-h-screen flex flex-col select-none antialiased">
+  <header class="bg-win-bg border-b-2 border-win-dark shadow-sm">
+    <div class="bg-gradient-to-r from-win-navy to-win-navy-gradient text-white px-4 py-2 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 flex items-center justify-center shrink-0"><img alt="WinDoc logo" class="w-8 h-8" src="logo.svg" /></div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm tracking-wide">WinDoc Web DMS</span>
+            <span class="text-[10px] font-mono bg-white/20 px-1.5 py-0.5 font-normal">v4.0 Web Edition</span>
+          </div>
+          <span class="text-[11px] text-gray-200">Enterprise Shared Document Repository</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-xs">
+        <div class="flex items-center gap-1.5 font-mono text-[11px] bg-black/25 px-2.5 py-1 border border-white/20">
+          <span class="material-symbols-outlined text-[14px] text-teal-300">account_circle</span>
+          <span>USER: <strong class="text-white">{{ api.session()?.username }}</strong></span>
+        </div>
+        <button type="button" class="text-gray-200 hover:text-white underline font-semibold text-[11px] cursor-pointer" (click)="logout()">Log Out</button>
+      </div>
+    </div>
+    <nav class="px-3 py-1 flex items-center justify-between border-t border-win-light text-xs">
+      <div class="flex items-center gap-1">
+        <button type="button" class="win-btn font-semibold px-3 py-1 text-black bg-[#e2ded6] flex items-center gap-1.5" (click)="goto('documents')">
+          <span class="material-symbols-outlined text-[15px] text-win-navy">folder_shared</span><span><u>D</u>ocuments</span>
+        </button>
+        <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" (click)="goto('upload-section', 'title-input')">
+          <span class="material-symbols-outlined text-[15px] text-win-teal">upload_file</span><span><u>U</u>pload</span>
+        </button>
+        <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" (click)="goto('groups', 'group-filter')">
+          <span class="material-symbols-outlined text-[15px] text-gray-700">category</span><span><u>G</u>roups</span>
+        </button>
+        <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" [attr.aria-expanded]="showHelp()" (click)="showHelp.set(!showHelp())">
+          <span class="material-symbols-outlined text-[15px] text-win-navy">help</span><span><u>H</u>elp</span>
+        </button>
+      </div>
+      <div class="text-[11px] font-mono text-gray-600 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full inline-block" [class]="error() ? 'bg-red-600' : 'bg-emerald-600'"></span>
+        <span>{{ error() ? 'Disconnected' : 'Connected' }}</span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="flex-1 p-4 max-w-7xl mx-auto w-full flex flex-col gap-4">
+    @if (showHelp()) {
+      <section class="win-outset bg-[#ffffe1] p-3 text-[11px] text-gray-900" role="note">
+        <strong>Help:</strong> Pick or drop a file, give it a title and press Upload File. The file group (Word, PDF, Excel) is detected
+        automatically. Use Search and View Group to narrow the list, click the Name, Size or Upload Date headers to sort, and tick rows to
+        Download Selected.
+      </section>
+    }
+
+    <section class="win-outset bg-win-bg p-3.5" id="upload-section">
+      <div class="flex items-center gap-1.5 pb-2 mb-3 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+        <span class="material-symbols-outlined text-[16px] text-win-navy">cloud_upload</span>
+        <span>UPLOAD DOCUMENT TO REPOSITORY</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        <div class="md:col-span-4 flex flex-col gap-1">
+          <label class="font-semibold text-gray-800 text-[11px] flex items-center gap-1" for="title-input">
+            <span>Title:</span><span class="text-red-700 font-bold">*</span>
+          </label>
+          <div class="win-inset bg-white p-0.5">
+            <input id="title-input" type="text" required class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
+              [value]="title()" (input)="title.set($any($event.target).value)" placeholder="Document title" />
+          </div>
+          <span class="text-[10px] text-gray-600">File group is detected automatically from the file.</span>
+        </div>
+        <div class="md:col-span-6">
+          <input #fileInput id="file-input" type="file" class="hidden" aria-label="Choose file" (change)="pick($any($event.target).files?.[0]); fileInput.value = ''" />
+          <div class="win-inset bg-white border border-dashed p-2 flex items-center justify-between cursor-pointer hover:bg-gray-50"
+            [class.border-win-navy]="dragging()" [class.border-gray-400]="!dragging()" [class.bg-blue-50]="dragging()"
+            (click)="fileInput.click()" (dragover)="$event.preventDefault(); dragging.set(true)" (dragleave)="dragging.set(false)" (drop)="onDrop($event)">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-[20px] text-win-teal">drive_folder_upload</span>
+              <div class="min-w-0">
+                <div class="font-medium text-[11px] text-gray-800 truncate">{{ file() ? file()!.name + ' (' + formatSize(file()!.size) + ')' : 'Select file or drag & drop here' }}</div>
+                <div class="text-[10px] text-gray-500 font-mono">Word, PDF, Excel and other files (Max 50MB)</div>
+              </div>
+            </div>
+            <button type="button" class="win-btn px-2.5 py-1 text-[11px] font-semibold text-gray-900 shrink-0" (click)="$event.stopPropagation(); fileInput.click()">Browse...</button>
+          </div>
+        </div>
+        <div class="md:col-span-2 flex items-end">
+          <button type="button" class="win-btn w-full py-2 px-3 font-bold text-xs text-win-navy flex items-center justify-center gap-1.5 disabled:text-gray-500" [disabled]="!canUpload()" (click)="upload()">
+            <span class="material-symbols-outlined text-[16px]">upload</span>
+            {{ uploading() ? 'Uploading...' : 'Upload File' }}
+          </button>
+        </div>
+      </div>
+      @if (uploadMsg(); as m) {
+        <div class="mt-2 text-[11px]" [class.text-red-700]="m.error" [class.text-gray-800]="!m.error" role="status">{{ m.text }}</div>
+      }
+    </section>
+
+    <section class="win-outset bg-win-bg p-2.5 flex flex-wrap items-center justify-between gap-3" id="groups">
+      <div class="flex items-center gap-2 flex-1 min-w-[280px]">
+        <label class="font-semibold text-gray-800 text-[11px] shrink-0" for="search-input">Search:</label>
+        <div class="win-inset bg-white flex-1 flex items-center px-2 py-1">
+          <span class="material-symbols-outlined text-[15px] text-gray-500 mr-1.5">search</span>
+          <input id="search-input" type="text" class="w-full bg-transparent border-0 p-0 text-xs text-black placeholder-gray-400 focus:outline-none focus:ring-0 font-mono"
+            placeholder="Filter by title or file name..." [value]="search()" (input)="setSearch($any($event.target).value)" />
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="font-semibold text-gray-800 text-[11px] shrink-0" for="group-filter">View Group:</label>
+        <div class="win-inset bg-white px-1 py-0.5">
+          <select id="group-filter" class="bg-transparent border-0 text-xs py-0.5 px-1 focus:ring-0 focus:outline-none text-black" [value]="group()" (change)="setGroup($any($event.target).value)">
+            <option value="ALL">All File Groups</option>
+            <option value="WORD">Word Documents</option>
+            <option value="PDF">Adobe PDF</option>
+            <option value="EXCEL">Excel Workbooks</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button type="button" class="win-btn px-3 py-1 font-semibold text-xs flex items-center gap-1 text-black" [disabled]="selected().size === 0" (click)="downloadSelected()">
+          <span class="material-symbols-outlined text-[15px] text-win-navy">download_for_offline</span>Download Selected
+        </button>
+        <button type="button" class="win-btn px-2.5 py-1 text-xs flex items-center gap-1 text-gray-800" (click)="load()">
+          <span class="material-symbols-outlined text-[15px] text-win-teal">refresh</span>Refresh
+        </button>
+      </div>
+    </section>
+
+    <section class="win-outset bg-win-bg p-2 flex flex-col flex-1" id="documents">
+      <div class="win-inset bg-white overflow-x-auto min-h-[360px]">
+        <table class="w-full text-left border-collapse select-text">
+          <thead>
+            <tr class="sticky top-0 z-10 font-bold text-[11px]">
+              <th class="win-header-cell py-1.5 px-2 w-8 text-center">
+                <input type="checkbox" class="cursor-pointer" aria-label="Select all documents on this page" [checked]="allSelected()" (change)="toggleAll()" />
+              </th>
+              <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200" (click)="sortBy('title')">
+                <div class="flex items-center justify-between"><span>Document Name / File Name</span><span class="font-mono text-[9px] text-gray-600">{{ arrow('title') }}</span></div>
+              </th>
+              <th class="win-header-cell py-1.5 px-3 w-44"><span>File Group</span></th>
+              <th class="win-header-cell py-1.5 px-3 w-28"><span>File Type</span></th>
+              <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200 w-24" (click)="sortBy('size')">
+                <div class="flex items-center justify-end gap-1"><span class="font-mono text-[9px] text-gray-600">{{ arrow('size') }}</span><span>Size</span></div>
+              </th>
+              <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200 w-40" (click)="sortBy('uploadedAt')">
+                <div class="flex items-center justify-between"><span>Upload Date</span><span class="font-mono text-[9px] text-gray-600">{{ arrow('uploadedAt') }}</span></div>
+              </th>
+              <th class="win-header-cell py-1.5 px-2 text-center w-60"><span>Action</span></th>
+            </tr>
+          </thead>
+          <tbody class="text-xs divide-y divide-gray-200 font-normal">
+            @if (loading() && docs().length === 0) {
+              <tr><td colspan="7" class="py-8 text-center text-gray-600">Loading documents...</td></tr>
+            } @else if (rows().length === 0) {
+              <tr><td colspan="7" class="py-8 text-center text-gray-600">No documents. Upload one above.</td></tr>
+            }
+            @for (d of rows(); track d.id) {
+              <tr class="hover:bg-blue-50 transition-colors">
+                <td class="py-2 px-2 text-center">
+                  <input type="checkbox" class="cursor-pointer" [attr.aria-label]="'Select ' + d.title" [checked]="selected().has(d.id)" (change)="toggle(d.id)" />
+                </td>
+                <td class="py-2 px-3">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]" [class]="icon(d.documentType).cls">{{ icon(d.documentType).name }}</span>
+                    <div class="min-w-0">
+                      <div class="font-semibold text-gray-900 truncate">{{ d.title }}</div>
+                      <div class="font-mono text-[11px] text-gray-600 truncate">{{ d.filename }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="py-2 px-3 text-gray-700">{{ groupLabel(d.documentType) }}</td>
+                <td class="py-2 px-3 text-gray-600 truncate max-w-28" [title]="d.contentType ?? ''">{{ d.contentType || '—' }}</td>
+                <td class="py-2 px-3 text-right font-mono text-[11px] text-gray-700">{{ formatSize(d.size) }}</td>
+                <td class="py-2 px-3 font-mono text-[11px] text-gray-600">{{ d.uploadedAt | date: 'MM/dd/yyyy hh:mm a' }}</td>
+                <td class="py-2 px-2 whitespace-nowrap"><div class="flex items-center justify-center gap-1">
+                  <a class="win-btn inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-win-navy no-underline leading-4" [href]="api.contentUrl(d.id)" download>
+                    <span class="material-symbols-outlined text-[13px] leading-none">download</span>Download
+                  </a>
+                  <button type="button" class="win-btn px-2 py-0.5 text-[11px] font-semibold leading-4" (click)="rename(d)">Rename</button>
+                  <button type="button" class="win-btn px-2 py-0.5 text-[11px] font-semibold leading-4 text-red-700" (click)="remove(d)">Delete</button>
+                </div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between mt-2 pt-1 border-t border-win-light text-[11px] text-gray-700">
+        <div>Showing <strong>{{ rangeStart() }}–{{ rangeEnd() }}</strong> of <strong>{{ filtered().length }}</strong> documents</div>
+        <div class="flex items-center gap-1 font-mono">
+          <button type="button" class="win-btn px-2 py-0.5 text-[10px]" [disabled]="pageIdx() === 0" (click)="page.set(pageIdx() - 1)">&lt;&lt; Prev</button>
+          @for (p of pages(); track p) {
+            <button type="button" class="win-btn px-2 py-0.5 text-[10px]" [class.bg-white]="p === pageIdx()" [class.font-bold]="p === pageIdx()" [class.text-win-navy]="p === pageIdx()"
+              [attr.aria-current]="p === pageIdx() ? 'page' : null" (click)="page.set(p)">{{ p + 1 }}</button>
+          }
+          <button type="button" class="win-btn px-2 py-0.5 text-[10px]" [disabled]="pageIdx() >= pageCount() - 1" (click)="page.set(pageIdx() + 1)">Next &gt;&gt;</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bg-win-bg border-t-2 border-win-light p-1">
+    <div class="max-w-7xl mx-auto flex items-center gap-2 text-[11px] text-gray-800">
+      <div class="win-inset bg-win-bg px-2.5 py-0.5 flex-1 flex items-center gap-1.5 truncate" [class.text-red-700]="error()" role="status">
+        <span class="material-symbols-outlined text-[14px]" [class.text-win-navy]="!error()">{{ error() ? 'error' : 'inventory_2' }}</span>
+        <span>{{ error() ?? 'Repository: ' + docs().length + ' Documents (' + volumeMb() + ' MB in volume)' }}</span>
+      </div>
+      <div class="win-inset bg-win-bg px-2.5 py-0.5 w-40 shrink-0">{{ selected().size }} selected</div>
+      <div class="win-inset bg-win-bg px-2 py-0.5 w-24 text-center font-mono text-[11px] shrink-0 text-gray-700">{{ now() | date: 'hh:mm a' }}</div>
+    </div>
+  </footer>
+</div>
