@@ -5,10 +5,10 @@ MinIO fuer die Datei-Blobs.
 
 ## Starten
 
-Alles in Containern (REST-Server, PostgreSQL, MinIO):
+Alles in Containern (Web-UI/nginx, REST-Server, PostgreSQL, MinIO):
 
 ```
-docker compose up --build   # API auf http://localhost:8080
+docker compose up --build   # UI auf http://localhost, API auf http://localhost:8080
 ```
 
 Nur die Infrastruktur im Container, App lokal:
@@ -28,12 +28,24 @@ npx ng serve                # UI auf http://localhost:4200
 npx ng test                 # Frontend-Tests (Vitest)
 ```
 
-Im Docker-Image wird das Frontend gebaut und von Spring Boot unter
-http://localhost:8080 ausgeliefert. Erstes Login: "New Account..." legt einen
+Im Docker-Setup wird das Frontend gebaut und vom nginx-Container (`webui`)
+unter http://localhost ausgeliefert. Erstes Login: "New Account..." legt einen
 User an (Passwort min. 8 Zeichen).
 
 PostgreSQL: `localhost:5433` (swendoc / secret), 5432 bleibt fuer die lokale
 Homebrew-Instanz frei. MinIO Console: http://localhost:9001 (minioadmin / minioadmin)
+
+## Web-UI (nginx)
+
+Der Service `webui` in `docker-compose.yml` wird aus der Stage `webui` im
+`Dockerfile` gebaut: Angular wird gebaut und von nginx ausgeliefert. Die Config
+liegt in `frontend/nginx.conf`:
+
+- `/docs`, `/documents/`, `/session`, `/users` -> Reverse Proxy an `app:8080`
+- alles andere -> `index.html` (Angular-Routing, z.B. Reload auf `/documents`)
+- Uploads bis 50 MB (`client_max_body_size`)
+
+Das Backend wird ueber die Stage `app` gebaut (`target: app` in der Compose).
 
 ## REST API
 
