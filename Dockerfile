@@ -5,6 +5,12 @@ RUN npm ci
 COPY frontend/ ./
 RUN npx ng build
 
+# nginx-Container für die Web-UI
+FROM nginx:alpine AS webui
+COPY --from=frontend /frontend/dist/frontend/browser /usr/share/nginx/html
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /build
 COPY .mvn/ .mvn/
@@ -14,7 +20,8 @@ COPY src/ src/
 COPY --from=frontend /frontend/dist/frontend/browser/ src/main/resources/static/
 RUN ./mvnw -B -DskipTests package
 
-FROM eclipse-temurin:25-jre
+# Backend-Container
+FROM eclipse-temurin:25-jre AS app
 WORKDIR /app
 COPY --from=build /build/target/swendoc-*.jar app.jar
 EXPOSE 8080
