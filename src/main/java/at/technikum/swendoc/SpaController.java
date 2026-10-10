@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class SpaController {
 
     // ponytail: explicit list of client routes; add new ones here when the router grows
-    @GetMapping({"/login", "/documents"})
+    @GetMapping({"/login", "/documents", "/my-groups"})
     public String index() {
         return "forward:/index.html";
     }

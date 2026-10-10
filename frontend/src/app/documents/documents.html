@@ -27,9 +27,9 @@
         <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" (click)="goto('upload-section', 'title-input')">
           <span class="material-symbols-outlined text-[15px] text-win-teal">upload_file</span><span><u>U</u>pload</span>
         </button>
-        <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" (click)="goto('groups', 'group-filter')">
+        <a routerLink="/my-groups" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5 no-underline">
           <span class="material-symbols-outlined text-[15px] text-gray-700">category</span><span><u>G</u>roups</span>
-        </button>
+        </a>
         <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" [attr.aria-expanded]="showHelp()" (click)="showHelp.set(!showHelp())">
           <span class="material-symbols-outlined text-[15px] text-win-navy">help</span><span><u>H</u>elp</span>
         </button>
@@ -44,8 +44,8 @@
   <main class="flex-1 p-4 max-w-7xl mx-auto w-full flex flex-col gap-4">
     @if (showHelp()) {
       <section class="win-outset bg-[#ffffe1] p-3 text-[11px] text-gray-900" role="note">
-        <strong>Help:</strong> Pick or drop a file, give it a title and press Upload File. The file group (Word, PDF, Excel) is detected
-        automatically. Use Search and View Group to narrow the list, click the Name, Size or Upload Date headers to sort, and tick rows to
+        <strong>Help:</strong> Pick or drop a file, give it a title and press Upload File. Use Search, or View Group to show only the
+        documents of one of your groups (create groups under Groups), click the Name, Size or Upload Date headers to sort, and tick rows to
         Download Selected.
       </section>
     }
@@ -62,9 +62,14 @@
           </label>
           <div class="win-inset bg-white p-0.5">
             <input id="title-input" type="text" required class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
-              [value]="title()" (input)="title.set($any($event.target).value)" placeholder="Document title" />
+              [value]="title()" (input)="title.set($any($event.target).value)" placeholder="Document title"
+              [attr.aria-invalid]="!!uploadErrors()['title']" aria-describedby="title-error" />
           </div>
-          <span class="text-[10px] text-gray-600">File group is detected automatically from the file.</span>
+          @if (uploadErrors()['title']; as msg) {
+            <span id="title-error" class="text-[11px] text-red-700 font-semibold">{{ msg }}</span>
+          } @else {
+            <span class="text-[10px] text-gray-600">Uploaded documents belong to your account.</span>
+          }
         </div>
         <div class="md:col-span-6">
           <input #fileInput id="file-input" type="file" class="hidden" aria-label="Choose file" (change)="pick($any($event.target).files?.[0]); fileInput.value = ''" />
@@ -75,11 +80,14 @@
               <span class="material-symbols-outlined text-[20px] text-win-teal">drive_folder_upload</span>
               <div class="min-w-0">
                 <div class="font-medium text-[11px] text-gray-800 truncate">{{ file() ? file()!.name + ' (' + formatSize(file()!.size) + ')' : 'Select file or drag & drop here' }}</div>
-                <div class="text-[10px] text-gray-500 font-mono">Word, PDF, Excel and other files (Max 50MB)</div>
+                <div class="text-[10px] text-gray-500 font-mono">{{ fileHint() ?? 'Word, PDF, Excel and other files' }}</div>
               </div>
             </div>
             <button type="button" class="win-btn px-2.5 py-1 text-[11px] font-semibold text-gray-900 shrink-0" (click)="$event.stopPropagation(); fileInput.click()">Browse...</button>
           </div>
+          @if (uploadErrors()['file']; as msg) {
+            <div id="file-error" class="mt-1 text-[11px] text-red-700 font-semibold" role="alert">{{ msg }}</div>
+          }
         </div>
         <div class="md:col-span-2 flex items-end">
           <button type="button" class="win-btn w-full py-2 px-3 font-bold text-xs text-win-navy flex items-center justify-center gap-1.5 disabled:text-gray-500" [disabled]="!canUpload()" (click)="upload()">
@@ -106,11 +114,10 @@
         <label class="font-semibold text-gray-800 text-[11px] shrink-0" for="group-filter">View Group:</label>
         <div class="win-inset bg-white px-1 py-0.5">
           <select id="group-filter" class="bg-transparent border-0 text-xs py-0.5 px-1 focus:ring-0 focus:outline-none text-black" [value]="group()" (change)="setGroup($any($event.target).value)">
-            <option value="ALL">All File Groups</option>
-            <option value="WORD">Word Documents</option>
-            <option value="PDF">Adobe PDF</option>
-            <option value="EXCEL">Excel Workbooks</option>
-            <option value="OTHER">Other</option>
+            <option value="ALL">All Documents</option>
+            @for (g of groups(); track g.id) {
+              <option [value]="g.id">{{ g.name }} ({{ g.documents.length }})</option>
+            }
           </select>
         </div>
       </div>
@@ -125,6 +132,11 @@
     </section>
 
     <section class="win-outset bg-win-bg p-2 flex flex-col flex-1" id="documents">
+      @if (!adding() && addMsg(); as m) {
+        <div class="px-1 pb-2 text-[11px] flex items-center gap-1.5" [class.text-red-700]="m.error" [class.text-gray-800]="!m.error" role="status">
+          <span class="material-symbols-outlined text-[14px] text-emerald-700">check_circle</span>{{ m.text }}
+        </div>
+      }
       <div class="win-inset bg-white overflow-x-auto min-h-[360px]">
         <table class="w-full text-left border-collapse select-text">
           <thead>
@@ -135,7 +147,7 @@
               <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200" (click)="sortBy('title')">
                 <div class="flex items-center justify-between"><span>Document Name / File Name</span><span class="font-mono text-[9px] text-gray-600">{{ arrow('title') }}</span></div>
               </th>
-              <th class="win-header-cell py-1.5 px-3 w-44"><span>File Group</span></th>
+              <th class="win-header-cell py-1.5 px-3 w-44"><span>Groups</span></th>
               <th class="win-header-cell py-1.5 px-3 w-28"><span>File Type</span></th>
               <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200 w-24" (click)="sortBy('size')">
                 <div class="flex items-center justify-end gap-1"><span class="font-mono text-[9px] text-gray-600">{{ arrow('size') }}</span><span>Size</span></div>
@@ -143,7 +155,7 @@
               <th class="win-header-cell py-1.5 px-3 cursor-pointer hover:bg-gray-200 w-40" (click)="sortBy('uploadedAt')">
                 <div class="flex items-center justify-between"><span>Upload Date</span><span class="font-mono text-[9px] text-gray-600">{{ arrow('uploadedAt') }}</span></div>
               </th>
-              <th class="win-header-cell py-1.5 px-2 text-center w-60"><span>Action</span></th>
+              <th class="win-header-cell py-1.5 px-2 text-center w-[26rem]"><span>Action</span></th>
             </tr>
           </thead>
           <tbody class="text-xs divide-y divide-gray-200 font-normal">
@@ -166,7 +178,17 @@
                     </div>
                   </div>
                 </td>
-                <td class="py-2 px-3 text-gray-700">{{ groupLabel(d.documentType) }}</td>
+                <td class="py-2 px-3 text-gray-700">
+                  <div class="flex flex-wrap gap-1">
+                    @for (g of groupsOf(d); track g.id) {
+                      <span class="inline-flex items-center gap-0.5 bg-[#ffffe1] border border-gray-400 px-1 text-[10px] leading-4">
+                        <span class="material-symbols-outlined text-[12px] text-amber-600">folder</span>{{ g.name }}
+                      </span>
+                    } @empty {
+                      <span class="text-gray-400">—</span>
+                    }
+                  </div>
+                </td>
                 <td class="py-2 px-3 text-gray-600 truncate max-w-28" [title]="d.contentType ?? ''">{{ d.contentType || '—' }}</td>
                 <td class="py-2 px-3 text-right font-mono text-[11px] text-gray-700">{{ formatSize(d.size) }}</td>
                 <td class="py-2 px-3 font-mono text-[11px] text-gray-600">{{ d.uploadedAt | date: 'MM/dd/yyyy hh:mm a' }}</td>
@@ -174,6 +196,14 @@
                   <a class="win-btn inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-win-navy no-underline leading-4" [href]="api.contentUrl(d.id)" download>
                     <span class="material-symbols-outlined text-[13px] leading-none">download</span>Download
                   </a>
+                  <button type="button" class="win-btn inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold leading-4" (click)="openGroupDialog(d, 'add')">
+                    <span class="material-symbols-outlined text-[13px] leading-none text-amber-600">create_new_folder</span>Add to Group
+                  </button>
+                  @if (groupsOf(d).length > 0) {
+                    <button type="button" class="win-btn inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold leading-4" (click)="openGroupDialog(d, 'remove')">
+                      <span class="material-symbols-outlined text-[13px] leading-none text-gray-600">folder_off</span>Remove from Group
+                    </button>
+                  }
                   <button type="button" class="win-btn px-2 py-0.5 text-[11px] font-semibold leading-4" (click)="rename(d)">Rename</button>
                   <button type="button" class="win-btn px-2 py-0.5 text-[11px] font-semibold leading-4 text-red-700" (click)="remove(d)">Delete</button>
                 </div></td>
@@ -195,6 +225,55 @@
       </div>
     </section>
   </main>
+
+  @if (adding(); as d) {
+    <div class="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" (click)="closeAddToGroup()" (keydown.escape)="closeAddToGroup()">
+      <div class="win-outset bg-win-bg w-full max-w-sm" role="dialog" aria-modal="true" aria-labelledby="add-group-title" (click)="$event.stopPropagation()">
+        <div class="bg-gradient-to-r from-win-navy to-win-navy-gradient text-white px-2 py-1 flex items-center justify-between">
+          <span id="add-group-title" class="font-bold text-xs flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[15px]">{{ dialogMode() === 'add' ? 'create_new_folder' : 'folder_off' }}</span>
+            {{ dialogMode() === 'add' ? 'Add to Group' : 'Remove from Group' }}
+          </span>
+          <button type="button" class="win-btn w-5 h-5 text-black text-[11px] font-bold leading-none" aria-label="Close" (click)="closeAddToGroup()">×</button>
+        </div>
+        <div class="p-3.5 flex flex-col gap-3">
+          <div class="text-[11px] text-gray-800">
+            Document: <strong class="text-black">{{ d.title }}</strong>
+          </div>
+          @if (groups().length === 0) {
+            <div class="text-[11px] text-gray-800">
+              You have no groups yet. <a routerLink="/my-groups" class="text-win-navy underline font-semibold">Create one under Groups</a>.
+            </div>
+          } @else if (dialogGroups().length === 0) {
+            <div class="text-[11px] text-gray-800">This document is already in all of your groups.</div>
+          } @else {
+            <div class="flex flex-col gap-1">
+              <label class="font-semibold text-gray-800 text-[11px]" for="target-group">Group:</label>
+              <div class="win-inset bg-white px-1 py-0.5">
+                <select id="target-group" class="w-full bg-transparent border-0 text-xs py-0.5 px-1 focus:ring-0 focus:outline-none text-black"
+                  [value]="targetGroup()" (change)="targetGroup.set($any($event.target).value)">
+                  @for (g of dialogGroups(); track g.id) {
+                    <option [value]="g.id">{{ g.name }} ({{ g.documents.length }})</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+          @if (addMsg(); as m) {
+            <div class="text-[11px]" [class.text-red-700]="m.error" role="status">{{ m.text }}</div>
+          }
+          <div class="flex justify-end gap-1.5 pt-1 border-t border-win-light">
+            <button type="button" class="win-btn px-4 py-1 text-xs font-bold disabled:text-gray-500"
+              [class.text-win-navy]="dialogMode() === 'add'" [class.text-red-700]="dialogMode() === 'remove'"
+              [disabled]="!targetGroup() || addPending()" (click)="submitGroupDialog()">
+              {{ addPending() ? 'Saving...' : dialogMode() === 'add' ? 'Add' : 'Remove' }}
+            </button>
+            <button type="button" class="win-btn px-4 py-1 text-xs" (click)="closeAddToGroup()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 
   <footer class="bg-win-bg border-t-2 border-win-light p-1">
     <div class="max-w-7xl mx-auto flex items-center gap-2 text-[11px] text-gray-800">

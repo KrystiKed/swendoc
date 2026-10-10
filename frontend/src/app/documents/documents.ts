@@ -1,17 +1,20 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { Api, Doc, DocumentType } from '../api';
+import { Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { Api, Doc, DocumentType, Group } from '../api';
+import { FieldErrors, Validation, check, hasErrors, serverErrors } from '../validation';
 
-type Group = 'ALL' | DocumentType | 'OTHER';
+/** 'ALL' shows every document, otherwise the id of one of the user's groups. */
+const ALL = 'ALL';
 type SortKey = 'title' | 'size' | 'uploadedAt';
 
 const PAGE_SIZE = 10;
-const MAX_BYTES = 50 * 1024 * 1024;
 
 @Component({
   selector: 'app-documents',
-  imports: [DatePipe],
+  imports: [DatePipe, RouterLink],
   templateUrl: './documents.html',
 })
 export class Documents {
@@ -22,7 +25,14 @@ export class Documents {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly search = signal('');
-  protected readonly group = signal<Group>('ALL');
+  protected readonly groups = signal<Group[]>([]);
+  /** The document whose Add to Group dialog is open, if any. */
+  protected readonly adding = signal<Doc | null>(null);
+  protected readonly targetGroup = signal('');
+  protected readonly dialogMode = signal<'add' | 'remove'>('add');
+  protected readonly addMsg = signal<{ text: string; error: boolean } | null>(null);
+  protected readonly addPending = signal(false);
+  protected readonly group = signal<string>(ALL);
   protected readonly sortKey = signal<SortKey>('uploadedAt');
   protected readonly sortAsc = signal(false);
   protected readonly page = signal(0);
@@ -31,6 +41,11 @@ export class Documents {
   protected readonly file = signal<File | null>(null);
   protected readonly uploading = signal(false);
   protected readonly uploadMsg = signal<{ text: string; error: boolean } | null>(null);
+  protected readonly uploadErrors = signal<FieldErrors>({});
+  private readonly uploadRules = toSignal(inject(Validation).rules('upload'));
+  private readonly titleRules = toSignal(inject(Validation).rules('title'));
+  /** The server's file rule as hint text, e.g. "... at most 50 MB." */
+  protected readonly fileHint = computed(() => this.uploadRules()?.['file']?.find(r => r.constraint === 'FileSize')?.message);
   protected readonly dragging = signal(false);
   protected readonly showHelp = signal(false);
   protected readonly now = signal(new Date());
@@ -40,7 +55,6 @@ export class Documents {
   protected readonly filtered = computed(() => {
     const q = this.search().trim().toLowerCase();
     let list = this.docs();
-    if (this.group() === 'OTHER') list = list.filter(d => d.documentType === null);
     if (q) list = list.filter(d => d.title.toLowerCase().includes(q) || d.filename.toLowerCase().includes(q));
     const key = this.sortKey();
     const dir = this.sortAsc() ? 1 : -1;
@@ -71,13 +85,14 @@ export class Documents {
 
   constructor() {
     this.load();
+    this.loadGroups();
     const timer = setInterval(() => this.now.set(new Date()), 30000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
   protected load(): void {
     const g = this.group();
-    const req = g === 'WORD' || g === 'PDF' || g === 'EXCEL' ? this.api.listByType(g) : this.api.list();
+    const req = g === ALL ? this.api.list() : this.api.getGroup(g).pipe(map(group => group.documents));
     this.loading.set(true);
     req.subscribe({
       next: d => {
@@ -94,8 +109,16 @@ export class Documents {
     });
   }
 
+  /** Fills the View Group dropdown; without groups it just offers All Documents. */
+  private loadGroups(): void {
+    this.api.listGroups().subscribe({
+      next: g => this.groups.set([...g].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))),
+      error: () => this.groups.set([]),
+    });
+  }
+
   protected setGroup(v: string): void {
-    this.group.set(v as Group);
+    this.group.set(v);
     this.page.set(0);
     this.load();
   }
@@ -147,10 +170,19 @@ export class Documents {
 
   protected rename(d: Doc): void {
     const t = prompt('New title:', d.title)?.trim();
-    if (!t || t === d.title) return;
+    if (t == null || t === d.title) return;
+    const invalid = check(this.titleRules(), { title: t })['title'];
+    if (invalid) {
+      alert(invalid);
+      return;
+    }
     this.api.rename(d.id, t).subscribe({
       next: () => this.load(),
-      error: () => this.error.set('Rename failed.'),
+      error: e => {
+        const fields = serverErrors(e);
+        if (fields) alert(fields['title'] ?? Object.values(fields)[0]);
+        else this.error.set('Rename failed.');
+      },
     });
   }
 
@@ -162,17 +194,78 @@ export class Documents {
     });
   }
 
+  // --- add to group ---
+
+  /** The user's groups that contain the document, for the Groups column. */
+  protected groupsOf(d: Doc): Group[] {
+    return this.groups().filter(g => g.documents.some(x => x.id === d.id));
+  }
+
+  /** Groups offered in the dialog: ones without the document to add, ones with it to remove. */
+  protected readonly dialogGroups = computed(() => {
+    const d = this.adding();
+    if (!d) return [];
+    const member = (g: Group) => g.documents.some(x => x.id === d.id);
+    return this.groups().filter(g => (this.dialogMode() === 'add' ? !member(g) : member(g)));
+  });
+
+  protected openGroupDialog(d: Doc, mode: 'add' | 'remove'): void {
+    this.dialogMode.set(mode);
+    this.adding.set(d);
+    // when viewing one group, removing defaults to that group
+    const current = this.dialogGroups().find(g => g.id === this.group());
+    this.targetGroup.set((mode === 'remove' && current ? current : this.dialogGroups()[0])?.id ?? '');
+    this.addMsg.set(null);
+  }
+
+  protected closeAddToGroup(): void {
+    this.adding.set(null);
+    this.addMsg.set(null);
+  }
+
+  protected submitGroupDialog(): void {
+    const d = this.adding();
+    const groupId = this.targetGroup();
+    if (!d || !groupId) return;
+    const adding = this.dialogMode() === 'add';
+    this.addPending.set(true);
+    (adding ? this.api.addToGroup(groupId, d.id) : this.api.removeFromGroup(groupId, d.id)).subscribe({
+      next: g => {
+        this.addPending.set(false);
+        this.adding.set(null);
+        this.addMsg.set({
+          text: adding ? `"${d.title}" added to group "${g.name}".` : `"${d.title}" removed from group "${g.name}".`,
+          error: false,
+        });
+        this.groups.update(list => list.map(x => (x.id === g.id ? g : x)));
+        if (this.group() === g.id) this.load();
+      },
+      error: e => {
+        this.addPending.set(false);
+        this.addMsg.set({
+          text:
+            adding && e?.status === 404
+              ? 'Only documents you uploaded while logged in can be added to your groups.'
+              : `Could not ${adding ? 'add to' : 'remove from'} group (${e?.status || 'network error'}).`,
+          error: true,
+        });
+      },
+    });
+  }
+
   // --- upload ---
 
   protected pick(f: File | null | undefined): void {
     if (!f) return;
-    if (f.size > MAX_BYTES) {
+    this.uploadMsg.set(null);
+    // check the file right away (empty, too large) instead of waiting for Upload File
+    const errors = check(this.uploadRules(), { file: f }, ['file']);
+    this.uploadErrors.set(errors);
+    if (hasErrors(errors)) {
       this.file.set(null);
-      this.uploadMsg.set({ text: `"${f.name}" exceeds the 50MB limit.`, error: true });
       return;
     }
     this.file.set(f);
-    this.uploadMsg.set(null);
     this.title.set(f.name.replace(/\.[^.]*$/, '') || f.name);
   }
 
@@ -185,7 +278,9 @@ export class Documents {
   protected upload(): void {
     const f = this.file();
     const t = this.title().trim();
-    if (!f || !t) return;
+    const errors = check(this.uploadRules(), { title: t, file: f });
+    this.uploadErrors.set(errors);
+    if (hasErrors(errors) || !f) return;
     this.uploading.set(true);
     this.uploadMsg.set({ text: 'Uploading...', error: false });
     this.api.upload(t, f).subscribe({
@@ -193,12 +288,15 @@ export class Documents {
         this.uploading.set(false);
         this.file.set(null);
         this.title.set('');
+        this.uploadErrors.set({});
         this.uploadMsg.set({ text: 'Upload complete.', error: false });
         this.load();
       },
       error: e => {
         this.uploading.set(false);
-        this.uploadMsg.set({ text: `Upload failed (${e?.status || 'network error'}).`, error: true });
+        const fields = serverErrors(e);
+        if (fields) this.uploadErrors.set(fields);
+        this.uploadMsg.set(fields ? null : { text: `Upload failed (${e?.status || 'network error'}).`, error: true });
       },
     });
   }
@@ -226,9 +324,6 @@ export class Documents {
     }
   }
 
-  protected groupLabel(t: DocumentType | null): string {
-    return t === 'PDF' ? 'Adobe PDF' : t === 'WORD' ? 'Word Document' : t === 'EXCEL' ? 'Excel Workbook' : 'Other';
-  }
 
   protected formatSize(n: number): string {
     return n < 1024 ? `${n} B` : `${Math.round(n / 1024).toLocaleString('en-US')} KB`;

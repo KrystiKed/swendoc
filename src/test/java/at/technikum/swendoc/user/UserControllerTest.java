@@ -8,12 +8,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import at.technikum.swendoc.validation.ValidatorFactory;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = UserController.class)
+@Import(ValidatorFactory.class)
 class UserControllerTest {
 
     @Autowired
@@ -39,7 +42,21 @@ class UserControllerTest {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"alice\",\"password\":\"short\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("password"))
+                .andExpect(jsonPath("$.errors[0].constraint").value("Size"))
+                .andExpect(jsonPath("$.errors[0].message").value("Must be between 8 and 128 characters long."));
+    }
+
+    @Test
+    void validationMessagesFollowAcceptLanguage() throws Exception {
+        mockMvc.perform(post("/users")
+                        .header("Accept-Language", "de-AT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\" \",\"password\":\"correct-horse\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("username"))
+                .andExpect(jsonPath("$.errors[0].message").value("Bitte füllen Sie dieses Feld aus."));
     }
 
     @Test

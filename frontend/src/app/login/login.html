@@ -42,7 +42,11 @@
               <input #userInput id="username-input" name="username" type="text" autocomplete="username"
                 [ngModel]="username()" (ngModelChange)="username.set($event)"
                 class="w-full h-6 px-1.5 font-mono text-[11px] bg-white focus:outline-none"
+                [attr.aria-invalid]="!!fieldErrors()['username']" aria-describedby="username-error"
                 style="border-top:1px solid #808080;border-left:1px solid #808080;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #000" />
+              @if (fieldErrors()['username']; as msg) {
+                <div id="username-error" class="mt-0.5 text-[11px] text-[#ba1a1a] font-semibold">{{ msg }}</div>
+              }
             </div>
           </div>
           <div class="grid grid-cols-3 items-center gap-2">
@@ -51,7 +55,11 @@
               <input id="password-input" name="password" type="password" autocomplete="current-password"
                 [ngModel]="password()" (ngModelChange)="password.set($event)"
                 class="w-full h-6 px-1.5 font-mono text-[11px] tracking-widest bg-white focus:outline-none"
+                [attr.aria-invalid]="!!fieldErrors()['password']" aria-describedby="password-error"
                 style="border-top:1px solid #808080;border-left:1px solid #808080;border-right:1px solid #fff;border-bottom:1px solid #fff;box-shadow:inset 1px 1px 0 #000" />
+              @if (fieldErrors()['password']; as msg) {
+                <div id="password-error" class="mt-0.5 text-[11px] text-[#ba1a1a] font-semibold">{{ msg }}</div>
+              }
             </div>
           </div>
         </div>
@@ -73,7 +81,9 @@
       @if (showHelp()) {
         <div class="pt-2 space-y-1 text-[11px] leading-[14px] text-[#464653]" style="border-top:1px solid #808080;box-shadow:0 1px 0 #fff">
           <p>New here? Enter a user name and password, then click <strong>New Account...</strong> to register and log on.</p>
-          <p>Passwords must be at least 8 characters long (max. 128).</p>
+          @if (passwordHint(); as hint) {
+            <p>Password: {{ hint }}</p>
+          }
         </div>
       }
 

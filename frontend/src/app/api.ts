@@ -15,6 +15,14 @@ export interface Doc {
   documentType: DocumentType | null;
 }
 
+/** Mirrors DocumentGroupResponse.java. */
+export interface Group {
+  id: string;
+  name: string;
+  createdAt: string;
+  documents: Doc[];
+}
+
 /** Mirrors SessionResponse.java, plus the username the backend doesn't echo back. */
 export interface Session {
   token: string;
@@ -73,16 +81,12 @@ export class Api {
     return this.http.get<Doc[]>('/docs');
   }
 
-  /** Server-side grouping: GET /documents/group/{word|pdf|excel}. */
-  listByType(type: DocumentType): Observable<Doc[]> {
-    return this.http.get<Doc[]>(`/documents/group/${type.toLowerCase()}`);
-  }
-
   upload(title: string, file: File): Observable<Doc> {
     const form = new FormData();
     form.append('title', title);
     form.append('file', file);
-    return this.http.post<Doc>('/docs', form);
+    // the token makes the logged-in user the owner, so the document can go into their groups
+    return this.http.post<Doc>('/docs', form, { headers: this.auth() });
   }
 
   rename(id: string, title: string): Observable<Doc> {
@@ -91,6 +95,38 @@ export class Api {
 
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`/docs/${id}`);
+  }
+
+  // --- groups (always the logged-in user's own) ---
+
+  listGroups(): Observable<Group[]> {
+    return this.http.get<Group[]>('/groups', { headers: this.auth() });
+  }
+
+  getGroup(id: string): Observable<Group> {
+    return this.http.get<Group>(`/groups/${id}`, { headers: this.auth() });
+  }
+
+  createGroup(name: string): Observable<Group> {
+    return this.http.post<Group>('/groups', { name }, { headers: this.auth() });
+  }
+
+  /** Only works for documents the logged-in user uploaded; anything else is a 404. */
+  addToGroup(groupId: string, docId: string): Observable<Group> {
+    return this.http.put<Group>(`/groups/${groupId}/documents/${docId}`, null, { headers: this.auth() });
+  }
+
+  removeFromGroup(groupId: string, docId: string): Observable<Group> {
+    return this.http.delete<Group>(`/groups/${groupId}/documents/${docId}`, { headers: this.auth() });
+  }
+
+  deleteGroup(id: string): Observable<void> {
+    return this.http.delete<void>(`/groups/${id}`, { headers: this.auth() });
+  }
+
+  private auth(): Record<string, string> {
+    const token = this.session()?.token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   /** Plain link; the backend sets Content-Disposition: attachment. */

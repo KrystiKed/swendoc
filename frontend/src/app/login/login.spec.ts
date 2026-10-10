@@ -31,4 +31,30 @@ describe('Login', () => {
 
     expect(el.textContent).toContain('Invalid user name or password.');
   });
+
+  it('checks the server-provided rules before sending and shows their message at the field', async () => {
+    TestBed.configureTestingModule({
+      imports: [Login],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(Login);
+    const el: HTMLElement = fixture.nativeElement;
+    const http = TestBed.inject(HttpTestingController);
+    http.expectOne('/validation/credentials').flush({
+      password: [
+        { constraint: 'NotBlank', attributes: {}, message: 'Bitte füllen Sie dieses Feld aus.' },
+        { constraint: 'Size', attributes: { min: 8, max: 128 }, message: 'Muss zwischen 8 und 128 Zeichen lang sein.' },
+      ],
+    });
+    await fixture.whenStable();
+
+    const input = el.querySelector<HTMLInputElement>('#password-input')!;
+    input.value = 'short';
+    input.dispatchEvent(new Event('input'));
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    http.expectNone('/session');
+    expect(el.querySelector('#password-error')?.textContent).toContain('Muss zwischen 8 und 128 Zeichen lang sein.');
+  });
 });

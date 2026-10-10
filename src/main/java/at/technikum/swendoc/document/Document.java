@@ -1,13 +1,15 @@
 package at.technikum.swendoc.document;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.validation.constraints.NotBlank;
 import java.time.Instant;
 import java.util.UUID;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import at.technikum.swendoc.user.User;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.validation.constraints.NotBlank;
 
 @Entity
 public class Document {
@@ -27,9 +29,10 @@ public class Document {
     /** Key of the blob in the MinIO bucket. */
     private String objectKey;
 
-    /** Detected from the file on upload; null for anything that is not Word, PDF or Excel. */
-    @Enumerated(EnumType.STRING)
-    private DocumentType documentType;
+    /** Uploader; null for documents uploaded without a session token. */
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
     protected Document() {
     }
@@ -41,7 +44,6 @@ public class Document {
         this.size = size;
         this.objectKey = objectKey;
         this.uploadedAt = Instant.now();
-        this.documentType = DocumentType.detect(filename, contentType).orElse(null);
     }
 
     public UUID getId() {
@@ -76,7 +78,11 @@ public class Document {
         return objectKey;
     }
 
-    public DocumentType getDocumentType() {
-        return documentType;
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 }
