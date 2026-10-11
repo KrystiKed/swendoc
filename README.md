@@ -11,6 +11,11 @@ Alles in Containern (Web-UI/nginx, REST-Server, PostgreSQL, MinIO):
 docker compose up --build   # UI auf http://localhost, API auf http://localhost:8080
 ```
 
+Sobald nginx, REST-Server und Datenbank antworten, gibt der Einmal-Service `ready`
+"swendoc started successfully ... Access the web-ui on http://localhost:80" aus.
+Mit `-d` steht die Meldung in `docker compose logs ready`. Anderer Host-Port fuer
+die UI: `WEBUI_PORT=8081 docker compose up --build`.
+
 Nur die Infrastruktur im Container, App lokal:
 
 ```
@@ -41,8 +46,9 @@ Der Service `webui` in `docker-compose.yml` wird aus der Stage `webui` im
 `Dockerfile` gebaut: Angular wird gebaut und von nginx ausgeliefert. Die Config
 liegt in `frontend/nginx.conf`:
 
-- `/docs`, `/documents/`, `/session`, `/users` -> Reverse Proxy an `app:8080`
-- alles andere -> `index.html` (Angular-Routing, z.B. Reload auf `/documents`)
+- `/docs`, `/session`, `/users`, `/groups`, `/validation` -> Reverse Proxy an `app:8080`
+- alles andere -> `index.html` (Angular-Routing, z.B. Reload auf `/documents`,
+  `/documents/{id}` (Detailseite) oder `/profile`)
 - Uploads bis 50 MB (`client_max_body_size`)
 
 Das Backend wird ueber die Stage `app` gebaut (`target: app` in der Compose).
@@ -52,6 +58,8 @@ Das Backend wird ueber die Stage `app` gebaut (`target: app` in der Compose).
 ```
 POST   /users             {"username": "...", "password": "..."}  -> 201
 POST   /session           {"username": "...", "password": "..."}  -> Token
+GET    /users/me          (Bearer-Token) -> eigenes Profil
+PUT    /users/me/password (Bearer-Token) {"currentPassword": "...", "newPassword": "..."} -> 204, 403 bei falschem Passwort
 
 POST   /docs              multipart: title, file
 GET    /docs

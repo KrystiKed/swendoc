@@ -23,6 +23,13 @@ export interface Group {
   documents: Doc[];
 }
 
+/** Mirrors UserResponse.java. */
+export interface User {
+  id: string;
+  username: string;
+  createdAt: string;
+}
+
 /** Mirrors SessionResponse.java, plus the username the backend doesn't echo back. */
 export interface Session {
   token: string;
@@ -68,6 +75,14 @@ export class Api {
     return this.http.post('/users', { username, password });
   }
 
+  me(): Observable<User> {
+    return this.http.get<User>('/users/me', { headers: this.auth() });
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.put<void>('/users/me/password', { currentPassword, newPassword }, { headers: this.auth() });
+  }
+
   logout(): void {
     try {
       sessionStorage.removeItem(SESSION_KEY);
@@ -79,6 +94,10 @@ export class Api {
 
   list(): Observable<Doc[]> {
     return this.http.get<Doc[]>('/docs');
+  }
+
+  get(id: string): Observable<Doc> {
+    return this.http.get<Doc>(`/docs/${id}`);
   }
 
   upload(title: string, file: File): Observable<Doc> {

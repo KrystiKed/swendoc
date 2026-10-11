@@ -49,4 +49,8 @@ public class User {
     public Instant getCreatedAt() {
         return createdAt;
     }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
 }

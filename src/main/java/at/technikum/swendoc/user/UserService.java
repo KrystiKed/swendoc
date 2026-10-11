@@ -54,4 +54,14 @@ public class UserService {
                 .map(Session::getUser)
                 .orElseThrow(InvalidCredentialsException::new);
     }
+
+    /** The current password is asked again so a forgotten open session cannot lock the owner out. */
+    @Transactional
+    public User changePassword(User user, String currentPassword, String newPassword) {
+        if (!Passwords.matches(currentPassword, user.getPasswordHash())) {
+            throw new WrongPasswordException();
+        }
+        user.setPasswordHash(Passwords.hash(newPassword));
+        return users.save(user);
+    }
 }

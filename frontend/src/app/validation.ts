@@ -20,7 +20,7 @@ export type FormRules = Record<string, Rule[]>;
 /** Field name -> first message to show for it. */
 export type FieldErrors = Record<string, string>;
 
-export type Form = 'credentials' | 'upload' | 'title' | 'group';
+export type Form = 'credentials' | 'upload' | 'title' | 'group' | 'password';
 
 const num = (v: unknown, fallback: number) => (typeof v === 'number' ? v : fallback);
 const length = (v: unknown) => (typeof v === 'string' ? v.length : Array.isArray(v) ? v.length : 0);

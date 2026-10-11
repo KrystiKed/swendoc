@@ -60,4 +60,25 @@ class UserServiceTest {
         assertEquals(user, session.getUser());
         verify(sessionRepository).save(any(Session.class));
     }
+
+    @Test
+    void changePasswordStoresTheNewHash() {
+        User user = new User("alice", Passwords.hash("old-password"));
+        when(userRepository.save(user)).thenReturn(user);
+
+        userService.changePassword(user, "old-password", "new-password");
+
+        assertTrue(Passwords.matches("new-password", user.getPasswordHash()));
+        assertFalse(Passwords.matches("old-password", user.getPasswordHash()));
+    }
+
+    @Test
+    void changePasswordWithAWrongCurrentPasswordKeepsTheOldOne() {
+        User user = new User("alice", Passwords.hash("old-password"));
+
+        assertThrows(WrongPasswordException.class, () -> userService.changePassword(user, "nope-nope", "new-password"));
+
+        assertTrue(Passwords.matches("old-password", user.getPasswordHash()));
+        verify(userRepository, never()).save(any());
+    }
 }

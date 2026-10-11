@@ -12,10 +12,10 @@
         </div>
       </div>
       <div class="flex items-center gap-3 text-xs">
-        <div class="flex items-center gap-1.5 font-mono text-[11px] bg-black/25 px-2.5 py-1 border border-white/20">
+        <a routerLink="/profile" class="flex items-center gap-1.5 font-mono text-[11px] bg-black/25 px-2.5 py-1 border border-white/20 text-white no-underline hover:bg-black/40">
           <span class="material-symbols-outlined text-[14px] text-teal-300">account_circle</span>
           <span>USER: <strong class="text-white">{{ api.session()?.username }}</strong></span>
-        </div>
+        </a>
         <button type="button" class="text-gray-200 hover:text-white underline font-semibold text-[11px] cursor-pointer" (click)="logout()">Log Out</button>
       </div>
     </div>
@@ -27,6 +27,9 @@
         <button type="button" class="win-btn font-semibold px-3 py-1 text-black bg-[#e2ded6] flex items-center gap-1.5" aria-current="page">
           <span class="material-symbols-outlined text-[15px] text-gray-700">category</span><span><u>G</u>roups</span>
         </button>
+        <a routerLink="/profile" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5 no-underline">
+          <span class="material-symbols-outlined text-[15px] text-win-teal">badge</span><span><u>P</u>rofile</span>
+        </a>
         <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" [attr.aria-expanded]="showHelp()" (click)="showHelp.set(!showHelp())">
           <span class="material-symbols-outlined text-[15px] text-win-navy">help</span><span><u>H</u>elp</span>
         </button>
