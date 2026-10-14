@@ -23,9 +23,9 @@ describe('DocumentDetail', () => {
   it('shows the document, validates and saves a new title, toggles a group', async () => {
     const { http, fixture } = setup();
     await fixture.whenStable();
-    http.expectOne('/validation/title').flush(titleRules);
-    http.expectOne('/docs/1').flush(doc);
-    http.expectOne('/groups').flush([{ id: 'g1', name: 'Invoices', createdAt: '2026-01-01T00:00:00Z', documents: [] }]);
+    http.expectOne('/api/validation/title').flush(titleRules);
+    http.expectOne('/api/docs/1').flush(doc);
+    http.expectOne('/api/groups').flush([{ id: 'g1', name: 'Invoices', createdAt: '2026-01-01T00:00:00Z', documents: [] }]);
     await fixture.whenStable();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('h1')!.textContent).toContain('Invoice');
@@ -44,14 +44,14 @@ describe('DocumentDetail', () => {
     input.dispatchEvent(new Event('input'));
     await fixture.whenStable();
     el.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
-    const put = http.expectOne(r => r.method === 'PUT' && r.url === '/docs/1');
+    const put = http.expectOne(r => r.method === 'PUT' && r.url === '/api/docs/1');
     expect(put.request.body).toEqual({ title: 'Invoice 2026' });
     put.flush({ ...doc, title: 'Invoice 2026' });
     await fixture.whenStable();
     expect(el.querySelector('h1')!.textContent).toContain('Invoice 2026');
 
     el.querySelector<HTMLInputElement>('#groups-section input[type=checkbox]')!.click();
-    http.expectOne(r => r.method === 'PUT' && r.url === '/groups/g1/documents/1')
+    http.expectOne(r => r.method === 'PUT' && r.url === '/api/groups/g1/documents/1')
       .flush({ id: 'g1', name: 'Invoices', createdAt: '2026-01-01T00:00:00Z', documents: [doc] });
     await fixture.whenStable();
     expect(el.querySelector<HTMLInputElement>('#groups-section input[type=checkbox]')!.checked).toBe(true);
@@ -61,7 +61,7 @@ describe('DocumentDetail', () => {
   it('shows a not-found state for an unknown id', async () => {
     const { http, fixture } = setup();
     await fixture.whenStable();
-    http.expectOne('/docs/1').flush(null, { status: 404, statusText: 'Not Found' });
+    http.expectOne('/api/docs/1').flush(null, { status: 404, statusText: 'Not Found' });
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Document not found');
   });

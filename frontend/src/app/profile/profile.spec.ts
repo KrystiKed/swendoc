@@ -24,9 +24,9 @@ describe('Profile', () => {
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(Profile);
     await fixture.whenStable();
-    http.expectOne('/validation/password').flush(rules);
-    http.expectOne('/users/me').flush({ id: 'u1', username: 'alice', createdAt: '2026-01-02T10:00:00Z' });
-    http.expectOne('/groups').flush([
+    http.expectOne('/api/validation/password').flush(rules);
+    http.expectOne('/api/users/me').flush({ id: 'u1', username: 'alice', createdAt: '2026-01-02T10:00:00Z' });
+    http.expectOne('/api/groups').flush([
       { id: 'g1', name: 'A', createdAt: '', documents: [{ id: 'd1' }, { id: 'd2' }] },
       { id: 'g2', name: 'B', createdAt: '', documents: [{ id: 'd1' }] },
     ]);
@@ -49,12 +49,12 @@ describe('Profile', () => {
     el.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
     await fixture.whenStable();
     expect(el.querySelector('#confirm-password-error')!.textContent).toContain('do not match');
-    http.expectNone('/users/me/password');
+    http.expectNone('/api/users/me/password');
 
     type(el, '#confirm-password', 'new-password');
     await fixture.whenStable();
     el.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
-    const put = http.expectOne('/users/me/password');
+    const put = http.expectOne('/api/users/me/password');
     expect(put.request.body).toEqual({ currentPassword: 'old-password', newPassword: 'new-password' });
     put.flush(null, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();

@@ -9,13 +9,13 @@ import at.technikum.swendoc.user.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 
+/** Every operation is scoped to the owner: other users' documents do not exist for them. */
 @Service
 public class DocumentService {
 
@@ -32,27 +32,29 @@ public class DocumentService {
         this.bucket = bucket;
     }
 
-    public List<Document> findAll() {
-        return repository.findAll();
+    public List<Document> findAll(User owner) {
+        return repository.findByOwner(owner);
     }
 
-    public Document find(UUID id) {
-        return repository.findById(id).orElseThrow(() -> new DocumentNotFoundException(id));
+    /** A document of another user is reported as missing rather than forbidden, so ids do not leak. */
+    public Document find(User owner, UUID id) {
+        return repository.findById(id)
+                .filter(document -> document.getOwner() != null
+                        && document.getOwner().getId().equals(owner.getId()))
+                .orElseThrow(() -> new DocumentNotFoundException(id));
     }
 
     @Transactional
-    public Document upload(String title, MultipartFile file, User owner) throws Exception {
-        String objectKey = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        try (InputStream in = file.getInputStream()) {
-            minio.putObject(PutObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(objectKey)
-                    .stream(in, file.getSize(), -1)
-                    .contentType(file.getContentType())
-                    .build());
-        }
-        Document document = new Document(title, file.getOriginalFilename(),
-                file.getContentType(), file.getSize(), objectKey);
+    public Document upload(User owner, String title, String filename, String contentType, long size,
+                           InputStream content) throws Exception {
+        String objectKey = UUID.randomUUID() + "-" + filename;
+        minio.putObject(PutObjectArgs.builder()
+                .bucket(bucket)
+                .object(objectKey)
+                .stream(content, size, -1)
+                .contentType(contentType)
+                .build());
+        Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
         return repository.save(document);
     }
@@ -65,8 +67,8 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document rename(UUID id, String title) {
-        Document document = find(id);
+    public Document rename(User owner, UUID id, String title) {
+        Document document = find(owner, id);
         document.setTitle(title);
         return repository.save(document);
     }
@@ -74,8 +76,8 @@ public class DocumentService {
     // ponytail: blob is removed after the row commits; an orphaned blob on a crash here is
     // harmless storage waste. Add an outbox/cleanup job only if that shows up in grading.
     @Transactional
-    public void delete(UUID id) throws Exception {
-        Document document = find(id);
+    public void delete(User owner, UUID id) throws Exception {
+        Document document = find(owner, id);
         groups.findByDocumentsContaining(document).forEach(group -> group.removeDocument(document));
         repository.delete(document);
         minio.removeObject(RemoveObjectArgs.builder()

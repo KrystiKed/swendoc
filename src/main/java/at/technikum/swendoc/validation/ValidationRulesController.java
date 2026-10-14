@@ -26,7 +26,7 @@ import org.springframework.http.HttpStatus;
  * very rules the server enforces instead of a hand-copied set. Messages follow Accept-Language.
  */
 @RestController
-@RequestMapping("/validation")
+@RequestMapping("/api/validation")
 public class ValidationRulesController {
 
     /** Forms the frontend can ask for; the annotations on these records are the single source of rules. */

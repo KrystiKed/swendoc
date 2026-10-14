@@ -21,9 +21,9 @@ import at.technikum.swendoc.user.UserService;
 import at.technikum.swendoc.validation.Validator;
 import at.technikum.swendoc.validation.ValidatorFactory;
 
-/** The caller's own groups; every request needs "Authorization: Bearer {token}" from POST /session. */
+/** The caller's own groups; every request needs "Authorization: Bearer {token}" from POST /api/session. */
 @RestController
-@RequestMapping("/groups")
+@RequestMapping("/api/groups")
 public class DocumentGroupController {
 
     private final DocumentGroupService service;
@@ -37,31 +37,31 @@ public class DocumentGroupController {
     }
 
     @GetMapping
-    public List<DocumentGroupResponse> list(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+    public List<DocumentGroupResponse> list(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         return service.findAll(users.authenticate(authorization)).stream()
                 .map(DocumentGroupResponse::from)
                 .toList();
     }
 
     @GetMapping("/{id}")
-    public DocumentGroupResponse get(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public DocumentGroupResponse get(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                      @PathVariable UUID id) {
         return DocumentGroupResponse.from(service.find(users.authenticate(authorization), id));
     }
 
     @PostMapping
     public ResponseEntity<DocumentGroupResponse> create(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody GroupNameRequest request) {
         User owner = users.authenticate(authorization);
         names.check(request);
         DocumentGroup group = service.create(owner, request.name());
-        return ResponseEntity.created(URI.create("/groups/" + group.getId()))
+        return ResponseEntity.created(URI.create("/api/groups/" + group.getId()))
                 .body(DocumentGroupResponse.from(group));
     }
 
     @PutMapping("/{id}")
-    public DocumentGroupResponse rename(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public DocumentGroupResponse rename(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                         @PathVariable UUID id,
                                         @RequestBody GroupNameRequest request) {
         User owner = users.authenticate(authorization);
@@ -70,21 +70,21 @@ public class DocumentGroupController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public ResponseEntity<Void> delete(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                        @PathVariable UUID id) {
         service.delete(users.authenticate(authorization), id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/documents/{documentId}")
-    public DocumentGroupResponse addDocument(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public DocumentGroupResponse addDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                              @PathVariable UUID id, @PathVariable UUID documentId) {
         User owner = users.authenticate(authorization);
         return DocumentGroupResponse.from(service.addDocument(owner, id, documentId));
     }
 
     @DeleteMapping("/{id}/documents/{documentId}")
-    public DocumentGroupResponse removeDocument(@RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+    public DocumentGroupResponse removeDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                                 @PathVariable UUID id, @PathVariable UUID documentId) {
         User owner = users.authenticate(authorization);
         return DocumentGroupResponse.from(service.removeDocument(owner, id, documentId));

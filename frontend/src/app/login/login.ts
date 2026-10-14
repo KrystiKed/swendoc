@@ -27,7 +27,9 @@ export class Login implements OnInit {
   protected showHelp = signal(false);
 
   /** The server's password length rule, e.g. "Must be between 8 and 128 characters long." */
-  protected passwordHint = computed(() => this.rules()?.['password']?.find(r => r.constraint === 'Size')?.message);
+  protected passwordHint = computed(
+    () => this.rules()?.['password']?.find((r) => r.constraint === 'Size')?.message,
+  );
 
   ngOnInit(): void {
     if (this.api.session()) {
@@ -42,7 +44,9 @@ export class Login implements OnInit {
   protected register(): void {
     const [username, password] = [this.username(), this.password()];
     this.run(() =>
-      this.api.register(username, password).pipe(switchMap(() => this.api.login(username, password))),
+      this.api
+        .register(username, password)
+        .pipe(switchMap(() => this.api.login(username, password))),
     );
   }
 
@@ -63,25 +67,28 @@ export class Login implements OnInit {
     this.pending.set(true);
     call().subscribe({
       next: () => this.router.navigateByUrl('/documents'),
-      error: (e: unknown) => {
+      error: (error: unknown) => {
         this.pending.set(false);
-        const fields = serverErrors(e);
+        const fields = serverErrors(error);
         if (fields) this.fieldErrors.set(fields);
-        else this.error.set(this.message(e));
+        else this.error.set(this.message(error));
       },
       complete: () => this.pending.set(false),
     });
   }
 
-  private message(e: unknown): string {
-    const status = e instanceof HttpErrorResponse ? e.status : 0;
+  private message(error: unknown): string {
+    // status 0: the request never got an HTTP answer (offline, server down, proxy unreachable)
+    const status = error instanceof HttpErrorResponse ? error.status : 0;
     switch (status) {
+      case 0:
+        return 'Server unreachable.';
       case 401:
         return 'Invalid user name or password.';
       case 409:
         return 'User name already taken.';
       default:
-        return 'Server unreachable.';
+        return `Server error (${status}). Please try again later.`;
     }
   }
 }

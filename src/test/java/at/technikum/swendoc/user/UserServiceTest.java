@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +60,32 @@ class UserServiceTest {
         assertNotNull(session);
         assertEquals(user, session.getUser());
         verify(sessionRepository).save(any(Session.class));
+    }
+
+    @Test
+    void usernamesAreStoredAndLookedUpWithoutSurroundingWhitespace() {
+        when(userRepository.existsByUsername("alice")).thenReturn(true);
+
+        assertThrows(UsernameTakenException.class, () -> userService.register("alice ", "password123"));
+        assertThrows(InvalidCredentialsException.class, () -> userService.login(" bob ", "password123"));
+        verify(userRepository).findByUsername("bob");
+    }
+
+    @Test
+    void loginForAnUnknownUserIsRejected() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(InvalidCredentialsException.class, () -> userService.login("ghost", "password123"));
+        verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
+    void logoutDeletesTheSession() {
+        UUID token = UUID.randomUUID();
+
+        userService.logout("Bearer " + token);
+
+        verify(sessionRepository).deleteById(token);
     }
 
     @Test

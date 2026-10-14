@@ -8,7 +8,7 @@ MinIO fuer die Datei-Blobs.
 Alles in Containern (Web-UI/nginx, REST-Server, PostgreSQL, MinIO):
 
 ```
-docker compose up --build   # UI auf http://localhost, API auf http://localhost:8080
+docker compose up --build   # UI auf http://localhost, API auf http://localhost:8080/api
 ```
 
 Sobald nginx, REST-Server und Datenbank antworten, gibt der Einmal-Service `ready`
@@ -20,12 +20,12 @@ Nur die Infrastruktur im Container, App lokal:
 
 ```
 docker compose up -d postgres minio
-./mvnw spring-boot:run      # API auf http://localhost:8080
+./mvnw spring-boot:run      # API auf http://localhost:8080/api
 ./mvnw test                 # Tests, laufen ohne Docker (H2)
 ```
 
 Frontend (Angular, `frontend/`) im Dev-Modus, API-Calls werden per
-`proxy.conf.json` an `localhost:8080` weitergeleitet:
+`proxy.conf.json` (`/api`) an `localhost:8080` weitergeleitet:
 
 ```
 cd frontend && npm install
@@ -46,35 +46,43 @@ Der Service `webui` in `docker-compose.yml` wird aus der Stage `webui` im
 `Dockerfile` gebaut: Angular wird gebaut und von nginx ausgeliefert. Die Config
 liegt in `frontend/nginx.conf`:
 
-- `/docs`, `/session`, `/users`, `/groups`, `/validation` -> Reverse Proxy an `app:8080`
+- `/api/` -> Reverse Proxy an `app:8080` (die ganze REST-API liegt unter `/api`)
 - alles andere -> `index.html` (Angular-Routing, z.B. Reload auf `/documents`,
-  `/documents/{id}` (Detailseite) oder `/profile`)
+  `/documents/{id}` (Detailseite), `/groups` oder `/profile`)
 - Uploads bis 50 MB (`client_max_body_size`)
 
-Das Backend wird ueber die Stage `app` gebaut (`target: app` in der Compose).
+Das Backend wird ueber die Stage `app` gebaut (`target: app` in der Compose) und
+ist eine reine REST-API: es braucht keinen Frontend-Build und liefert keine UI aus.
+
+Alle Images sind auf feste Versionen gepinnt. MinIO kommt aus `pgsty/minio`
+(Community-Fork), weil `quay.io/minio/minio` nicht mehr veroeffentlicht wird.
 
 ## REST API
 
+Alle Pfade liegen unter `/api`. Ausser Registrierung, Login und `/api/validation`
+brauchen alle Requests `Authorization: Bearer {token}` (sonst 401).
+
 ```
-POST   /users             {"username": "...", "password": "..."}  -> 201
-POST   /session           {"username": "...", "password": "..."}  -> Token
-GET    /users/me          (Bearer-Token) -> eigenes Profil
-PUT    /users/me/password (Bearer-Token) {"currentPassword": "...", "newPassword": "..."} -> 204, 403 bei falschem Passwort
+POST   /api/users             {"username": "...", "password": "..."}  -> 201
+POST   /api/session           {"username": "...", "password": "..."}  -> Token
+DELETE /api/session           (Bearer-Token) -> 204, Token ist danach ungueltig
+GET    /api/users/me          (Bearer-Token) -> eigenes Profil
+PUT    /api/users/me/password (Bearer-Token) {"currentPassword": "...", "newPassword": "..."} -> 204, 403 bei falschem Passwort
 
-POST   /docs              multipart: title, file
-GET    /docs
-GET    /docs/{id}         Metadaten
-GET    /docs/{id}/content Datei-Download
-PUT    /docs/{id}         {"title": "..."}
-DELETE /docs/{id}
+POST   /api/docs              multipart: title, file
+GET    /api/docs              nur eigene Dokumente
+GET    /api/docs/{id}         Metadaten
+GET    /api/docs/{id}/content Datei-Download
+PUT    /api/docs/{id}         {"title": "..."}
+DELETE /api/docs/{id}
 
-GET    /documents/group       ["WORD", "PDF", "EXCEL"]
-GET    /documents/group/{id}  alle Dokumente eines Typs: word | pdf | excel, sonst 404
+GET/POST /api/groups, GET/PUT/DELETE /api/groups/{id},
+PUT/DELETE /api/groups/{id}/documents/{documentId}   eigene Gruppen
+GET    /api/validation/{form} Validierungsregeln fuers Frontend
 ```
 
-Der Typ wird beim Upload automatisch erkannt (Content-Type, sonst Dateiendung
-.doc/.docx, .pdf, .xls/.xlsx). Andere Dateien werden gespeichert, haben aber
-keinen Typ und tauchen in keiner Gruppe auf.
+Dokumente und Gruppen anderer User existieren fuer einen User nicht (404 statt 403,
+damit keine IDs geleakt werden).
 
 Request- und Response-Bodies gehen ueber DTOs, nicht ueber die Entities:
 `DocumentResponse`, `UserResponse`, `SessionResponse`, `CredentialsRequest`,
@@ -89,4 +97,7 @@ laeuft ueber das Repository Pattern: `DocumentRepository`, `UserRepository` und
 `postgres-data` und ueberleben `docker compose down`.
 
 Passwoerter werden mit PBKDF2-HMAC-SHA256 (210k Iterationen, zufaelligem Salt)
-gehasht. Das Session-Token wird ausgegeben, aber noch nicht auf `/docs` erzwungen.
+gehasht. Ein unbekannter Username wird gegen einen Dummy-Hash geprueft, damit die
+Antwortzeit nicht verraet, ob ein User existiert. Usernamen werden ohne fuehrende/
+abschliessende Leerzeichen gespeichert. Das Frontend schickt das Token per
+HTTP-Interceptor mit; jede 401 und der Ablauf von `expiresAt` beenden die Session.

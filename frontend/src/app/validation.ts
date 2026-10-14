@@ -4,7 +4,7 @@ import { Observable, catchError, of, shareReplay } from 'rxjs';
 
 /**
  * Client-side validation for user experience only: the rules and their (localized) messages come
- * from GET /validation/{form}, i.e. from the Bean Validation annotations the server enforces anyway.
+ * from GET /api/validation/{form}, i.e. from the Bean Validation annotations the server enforces anyway.
  * Nothing here is a second copy of a rule.
  */
 
@@ -70,7 +70,7 @@ export class Validation {
   rules(form: Form): Observable<FormRules> {
     let rules = this.cache.get(form);
     if (!rules) {
-      rules = this.http.get<FormRules>(`/validation/${form}`).pipe(
+      rules = this.http.get<FormRules>(`/api/validation/${form}`).pipe(
         catchError(() => of({})),
         shareReplay(1),
       );

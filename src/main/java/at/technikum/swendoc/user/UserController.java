@@ -5,14 +5,17 @@ import at.technikum.swendoc.validation.ValidatorFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api")
 public class UserController {
 
     private final UserService service;
@@ -36,6 +39,13 @@ public class UserController {
     public SessionResponse login(@RequestBody CredentialsRequest request) {
         credentials.check(request);
         return SessionResponse.from(service.login(request.username(), request.password()));
+    }
+
+    @DeleteMapping("/session")
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        service.logout(authorization);
+        return ResponseEntity.noContent().build();
     }
 
     /** The logged-in user, for the profile page. */

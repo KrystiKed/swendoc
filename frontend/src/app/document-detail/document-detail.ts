@@ -3,11 +3,12 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Api, Doc, Group } from '../api';
+import { Header } from '../header';
 import { Validation, check, serverErrors } from '../validation';
 
 @Component({
   selector: 'app-document-detail',
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [Header, DatePipe, DecimalPipe, RouterLink],
   templateUrl: './document-detail.html',
 })
 export class DocumentDetail {
@@ -25,99 +26,127 @@ export class DocumentDetail {
   protected readonly msg = signal<{ text: string; error: boolean } | null>(null);
   /** Group id whose membership change is in flight, so its checkbox is disabled meanwhile. */
   protected readonly pendingGroup = signal<string | null>(null);
+  /** Object URL of the image preview; the file is fetched with the token, so it can't be linked directly. */
+  protected readonly previewUrl = signal<string | null>(null);
   private readonly titleRules = toSignal(inject(Validation).rules('title'));
-  protected readonly now = signal(new Date());
 
   protected readonly canSave = computed(() => {
-    const t = this.title().trim();
-    return !!t && t !== this.doc()?.title && !this.saving();
+    const newTitle = this.title().trim();
+    return !!newTitle && newTitle !== this.doc()?.title && !this.saving();
   });
-  /** Browsers render images from the attachment URL, so they get a preview; other types don't. */
   protected readonly isImage = computed(() => !!this.doc()?.contentType?.startsWith('image/'));
 
   constructor() {
     this.load();
     this.api.listGroups().subscribe({
-      next: g => this.groups.set([...g].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))),
-      error: e => (e?.status === 401 ? this.logout() : this.groups.set([])),
+      next: (groups) =>
+        this.groups.set(
+          [...groups].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+          ),
+        ),
+      error: () => this.groups.set([]),
     });
-    const timer = setInterval(() => this.now.set(new Date()), 30000);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    inject(DestroyRef).onDestroy(() => {
+      const url = this.previewUrl();
+      if (url) URL.revokeObjectURL(url);
+    });
   }
 
   private load(): void {
     this.api.get(this.id).subscribe({
-      next: d => {
-        this.doc.set(d);
-        this.title.set(d.title);
+      next: (doc) => {
+        this.doc.set(doc);
+        this.title.set(doc.title);
         this.error.set(null);
+        if (this.isImage()) {
+          this.api
+            .content(doc.id)
+            .subscribe({
+              next: (blob) => this.previewUrl.set(URL.createObjectURL(blob)),
+              error: () => undefined,
+            });
+        }
       },
-      error: e => {
+      error: (e) => {
         if (e?.status === 404 || e?.status === 400) this.notFound.set(true);
         else this.error.set(`Could not load document (${e?.status || 'network error'}).`);
       },
     });
   }
 
-  protected isMember(g: Group): boolean {
-    return g.documents.some(d => d.id === this.id);
+  protected isMember(group: Group): boolean {
+    return group.documents.some((d) => d.id === this.id);
   }
 
   protected save(): void {
-    const t = this.title().trim();
-    const invalid = check(this.titleRules(), { title: t })['title'];
+    const newTitle = this.title().trim();
+    const invalid = check(this.titleRules(), { title: newTitle })['title'];
     this.titleError.set(invalid ?? null);
     if (invalid) return;
     this.saving.set(true);
-    this.api.rename(this.id, t).subscribe({
-      next: d => {
+    this.api.rename(this.id, newTitle).subscribe({
+      next: (doc) => {
         this.saving.set(false);
-        this.doc.set(d);
-        this.title.set(d.title);
+        this.doc.set(doc);
+        this.title.set(doc.title);
         this.msg.set({ text: 'Title saved.', error: false });
       },
-      error: e => {
+      error: (e) => {
         this.saving.set(false);
         const fields = serverErrors(e);
         if (fields) this.titleError.set(fields['title'] ?? Object.values(fields)[0]);
-        else this.msg.set({ text: `Could not save title (${e?.status || 'network error'}).`, error: true });
+        else
+          this.msg.set({
+            text: `Could not save title (${e?.status || 'network error'}).`,
+            error: true,
+          });
       },
     });
   }
 
-  protected toggleGroup(g: Group): void {
-    const adding = !this.isMember(g);
-    this.pendingGroup.set(g.id);
-    (adding ? this.api.addToGroup(g.id, this.id) : this.api.removeFromGroup(g.id, this.id)).subscribe({
-      next: updated => {
+  protected toggleGroup(group: Group): void {
+    const adding = !this.isMember(group);
+    this.pendingGroup.set(group.id);
+    (adding
+      ? this.api.addToGroup(group.id, this.id)
+      : this.api.removeFromGroup(group.id, this.id)
+    ).subscribe({
+      next: (updated) => {
         this.pendingGroup.set(null);
-        this.groups.update(list => list.map(x => (x.id === updated.id ? updated : x)));
-        this.msg.set({ text: adding ? `Added to group "${g.name}".` : `Removed from group "${g.name}".`, error: false });
+        this.groups.update((list) =>
+          list.map((existing) => (existing.id === updated.id ? updated : existing)),
+        );
+        this.msg.set({
+          text: adding ? `Added to group "${group.name}".` : `Removed from group "${group.name}".`,
+          error: false,
+        });
       },
-      error: e => {
+      error: (e) => {
         this.pendingGroup.set(null);
         this.msg.set({
-          text:
-            adding && e?.status === 404
-              ? 'Only documents you uploaded while logged in can be added to your groups.'
-              : `Could not update group (${e?.status || 'network error'}).`,
+          text: `Could not update group (${e?.status || 'network error'}).`,
           error: true,
         });
       },
     });
   }
 
-  protected remove(): void {
-    const d = this.doc();
-    if (!d || !confirm(`Delete "${d.title}"?`)) return;
-    this.api.delete(d.id).subscribe({
-      next: () => this.router.navigateByUrl('/documents'),
-      error: () => this.msg.set({ text: 'Delete failed.', error: true }),
+  protected download(): void {
+    const doc = this.doc();
+    if (!doc) return;
+    this.api.download(doc).subscribe({
+      error: (e) =>
+        this.msg.set({ text: `Download failed (${e?.status || 'network error'}).`, error: true }),
     });
   }
 
-  protected logout(): void {
-    this.api.logout();
-    this.router.navigateByUrl('/login');
+  protected remove(): void {
+    const doc = this.doc();
+    if (!doc || !confirm(`Delete "${doc.title}"?`)) return;
+    this.api.delete(doc.id).subscribe({
+      next: () => this.router.navigateByUrl('/documents'),
+      error: () => this.msg.set({ text: 'Delete failed.', error: true }),
+    });
   }
 }
