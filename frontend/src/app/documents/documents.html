@@ -63,8 +63,8 @@
           </button>
         </div>
       </div>
-      @if (uploadMsg(); as m) {
-        <div class="mt-2 text-[11px]" [class.text-red-700]="m.error" [class.text-gray-800]="!m.error" role="status">{{ m.text }}</div>
+      @if (uploadMsg(); as message) {
+        <div class="mt-2 text-[11px]" [class.text-red-700]="message.error" [class.text-gray-800]="!message.error" role="status">{{ message.text }}</div>
       }
     </section>
 
@@ -99,9 +99,9 @@
     </section>
 
     <section class="win-outset bg-win-bg p-2 flex flex-col flex-1" id="documents">
-      @if (!adding() && addMsg(); as m) {
-        <div class="px-1 pb-2 text-[11px] flex items-center gap-1.5" [class.text-red-700]="m.error" [class.text-gray-800]="!m.error" role="status">
-          <span class="material-symbols-outlined text-[14px] text-emerald-700">check_circle</span>{{ m.text }}
+      @if (!adding() && addMsg(); as message) {
+        <div class="px-1 pb-2 text-[11px] flex items-center gap-1.5" [class.text-red-700]="message.error" [class.text-gray-800]="!message.error" role="status">
+          <span class="material-symbols-outlined text-[14px] text-emerald-700">check_circle</span>{{ message.text }}
         </div>
       }
       <div class="win-inset bg-white overflow-x-auto min-h-[360px]">
@@ -226,8 +226,8 @@
               </div>
             </div>
           }
-          @if (addMsg(); as m) {
-            <div class="text-[11px]" [class.text-red-700]="m.error" role="status">{{ m.text }}</div>
+          @if (addMsg(); as message) {
+            <div class="text-[11px]" [class.text-red-700]="message.error" role="status">{{ message.text }}</div>
           }
           <div class="flex justify-end gap-1.5 pt-1 border-t border-win-light">
             <button type="button" class="win-btn px-4 py-1 text-xs font-bold disabled:text-gray-500"

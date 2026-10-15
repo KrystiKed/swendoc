@@ -74,8 +74,8 @@
                   [value]="title()" (input)="title.set($any($event.target).value)"
                   [attr.aria-invalid]="!!titleError()" aria-describedby="title-error" />
               </div>
-              @if (titleError(); as m) {
-                <span id="title-error" class="text-[11px] text-red-700 font-semibold">{{ m }}</span>
+              @if (titleError(); as message) {
+                <span id="title-error" class="text-[11px] text-red-700 font-semibold">{{ message }}</span>
               }
               <div class="flex justify-end">
                 <button type="submit" class="win-btn py-1 px-4 font-bold text-xs text-win-navy disabled:text-gray-500" [disabled]="!canSave()">
@@ -109,8 +109,8 @@
             }
           </section>
 
-          @if (msg(); as m) {
-            <div class="win-outset bg-[#ffffe1] px-3 py-2 text-[11px]" [class.text-red-700]="m.error" [class.text-gray-900]="!m.error" role="status">{{ m.text }}</div>
+          @if (msg(); as message) {
+            <div class="win-outset bg-[#ffffe1] px-3 py-2 text-[11px]" [class.text-red-700]="message.error" [class.text-gray-900]="!message.error" role="status">{{ message.text }}</div>
           }
         </div>
       </div>
