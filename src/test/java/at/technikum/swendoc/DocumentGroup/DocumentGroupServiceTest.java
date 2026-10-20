@@ -36,7 +36,7 @@ class DocumentGroupServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DocumentGroupService(groups, documents);
+        service = new DocumentGroupServiceImpl(groups, documents);
         alice = user("alice");
         bob = user("bob");
     }

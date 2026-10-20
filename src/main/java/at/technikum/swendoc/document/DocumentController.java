@@ -4,6 +4,7 @@ import at.technikum.swendoc.user.User;
 import at.technikum.swendoc.user.UserService;
 import at.technikum.swendoc.validation.Validator;
 import at.technikum.swendoc.validation.ValidatorFactory;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
@@ -62,7 +63,7 @@ public class DocumentController {
     public ResponseEntity<DocumentResponse> upload(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestParam(required = false) String title,
-            @RequestPart(required = false) MultipartFile file) throws Exception {
+            @RequestPart(required = false) MultipartFile file) throws IOException {
         User owner = users.authenticate(authorization);
         // optional on purpose: a missing title or file is reported by the validator like any other rule
         UploadRequest request = uploads.check(new UploadRequest(title, file));
@@ -79,7 +80,7 @@ public class DocumentController {
     @GetMapping("/{id}/content")
     public ResponseEntity<InputStreamResource> content(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @PathVariable UUID id) throws Exception {
+            @PathVariable UUID id) {
         Document document = service.find(users.authenticate(authorization), id);
         InputStream stream = service.download(document);
         return ResponseEntity.ok()
@@ -104,7 +105,7 @@ public class DocumentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @PathVariable UUID id) throws Exception {
+            @PathVariable UUID id) {
         service.delete(users.authenticate(authorization), id);
         return ResponseEntity.noContent().build();
     }

@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import at.technikum.swendoc.document.Document;
 import at.technikum.swendoc.document.DocumentNotFoundException;
 import at.technikum.swendoc.document.DocumentService;
+import at.technikum.swendoc.storage.StorageException;
 import at.technikum.swendoc.document.DocumentMapperImpl;
 import at.technikum.swendoc.user.InvalidCredentialsException;
 import at.technikum.swendoc.user.User;
@@ -112,5 +113,22 @@ class DocumentControllerTest {
         mockMvc.perform(delete("/api/docs/" + id).header("Authorization", TOKEN)).andExpect(status().isNoContent());
 
         verify(service).delete(alice, id);
+    }
+
+    @Test
+    void storageFailureIsServiceUnavailableWithoutInternals() throws Exception {
+        UUID id = UUID.randomUUID();
+        Document doc = new Document("Invoice", "invoice.pdf", "application/pdf", 9, "key");
+        when(service.find(alice, id)).thenReturn(doc);
+        when(service.download(doc)).thenThrow(new StorageException("Could not load key", new RuntimeException("minio down")));
+
+        mockMvc.perform(get("/api/docs/" + id + "/content").header("Authorization", TOKEN))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.detail").value("File storage is unavailable"));
+    }
+
+    @Test
+    void malformedIdStaysBadRequest() throws Exception {
+        mockMvc.perform(get("/api/docs/not-a-uuid").header("Authorization", TOKEN)).andExpect(status().isBadRequest());
     }
 }
