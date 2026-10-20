@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = UserController.class)
-@Import(ValidatorFactory.class)
+@Import({ValidatorFactory.class, UserMapperImpl.class})
 class UserControllerTest {
 
     @Autowired

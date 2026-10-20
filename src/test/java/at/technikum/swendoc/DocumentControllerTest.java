@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import at.technikum.swendoc.document.Document;
 import at.technikum.swendoc.document.DocumentNotFoundException;
 import at.technikum.swendoc.document.DocumentService;
+import at.technikum.swendoc.document.DocumentMapperImpl;
 import at.technikum.swendoc.user.InvalidCredentialsException;
 import at.technikum.swendoc.user.User;
 import at.technikum.swendoc.user.UserService;
@@ -30,7 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = at.technikum.swendoc.document.DocumentController.class)
-@Import(ValidatorFactory.class)
+@Import({ValidatorFactory.class, DocumentMapperImpl.class})
 class DocumentControllerTest {
 
     private static final String TOKEN = "Bearer t";

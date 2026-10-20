@@ -29,9 +29,12 @@ public class DocumentGroupController {
     private final DocumentGroupService service;
     private final UserService users;
     private final Validator<GroupNameRequest> names;
+    private final DocumentGroupMapper mapper;
 
-    public DocumentGroupController(DocumentGroupService service, UserService users, ValidatorFactory validators) {
+    public DocumentGroupController(DocumentGroupService service, UserService users, ValidatorFactory validators,
+                                   DocumentGroupMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
         this.users = users;
         this.names = validators.forClass(GroupNameRequest.class);
     }
@@ -39,14 +42,14 @@ public class DocumentGroupController {
     @GetMapping
     public List<DocumentGroupResponse> list(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         return service.findAll(users.authenticate(authorization)).stream()
-                .map(DocumentGroupResponse::from)
+                .map(mapper::toResponse)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public DocumentGroupResponse get(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                      @PathVariable UUID id) {
-        return DocumentGroupResponse.from(service.find(users.authenticate(authorization), id));
+        return mapper.toResponse(service.find(users.authenticate(authorization), id));
     }
 
     @PostMapping
@@ -57,7 +60,7 @@ public class DocumentGroupController {
         names.check(request);
         DocumentGroup group = service.create(owner, request.name());
         return ResponseEntity.created(URI.create("/api/groups/" + group.getId()))
-                .body(DocumentGroupResponse.from(group));
+                .body(mapper.toResponse(group));
     }
 
     @PutMapping("/{id}")
@@ -66,7 +69,7 @@ public class DocumentGroupController {
                                         @RequestBody GroupNameRequest request) {
         User owner = users.authenticate(authorization);
         names.check(request);
-        return DocumentGroupResponse.from(service.rename(owner, id, request.name()));
+        return mapper.toResponse(service.rename(owner, id, request.name()));
     }
 
     @DeleteMapping("/{id}")
@@ -80,13 +83,13 @@ public class DocumentGroupController {
     public DocumentGroupResponse addDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                              @PathVariable UUID id, @PathVariable UUID documentId) {
         User owner = users.authenticate(authorization);
-        return DocumentGroupResponse.from(service.addDocument(owner, id, documentId));
+        return mapper.toResponse(service.addDocument(owner, id, documentId));
     }
 
     @DeleteMapping("/{id}/documents/{documentId}")
     public DocumentGroupResponse removeDocument(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                                 @PathVariable UUID id, @PathVariable UUID documentId) {
         User owner = users.authenticate(authorization);
-        return DocumentGroupResponse.from(service.removeDocument(owner, id, documentId));
+        return mapper.toResponse(service.removeDocument(owner, id, documentId));
     }
 }

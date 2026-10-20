@@ -34,9 +34,12 @@ public class DocumentController {
     private final UserService users;
     private final Validator<UploadRequest> uploads;
     private final Validator<TitleRequest> titles;
+    private final DocumentMapper mapper;
 
-    public DocumentController(DocumentService service, UserService users, ValidatorFactory validators) {
+    public DocumentController(DocumentService service, UserService users, ValidatorFactory validators,
+                              DocumentMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
         this.users = users;
         this.uploads = validators.forClass(UploadRequest.class);
         this.titles = validators.forClass(TitleRequest.class);
@@ -45,14 +48,14 @@ public class DocumentController {
     @GetMapping
     public List<DocumentResponse> list(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-        return service.findAll(users.authenticate(authorization)).stream().map(DocumentResponse::from).toList();
+        return service.findAll(users.authenticate(authorization)).stream().map(mapper::toResponse).toList();
     }
 
     @GetMapping("/{id}")
     public DocumentResponse get(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @PathVariable UUID id) {
-        return DocumentResponse.from(service.find(users.authenticate(authorization), id));
+        return mapper.toResponse(service.find(users.authenticate(authorization), id));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -69,7 +72,7 @@ public class DocumentController {
                     request.file().getContentType(), request.file().getSize(), content);
         }
         return ResponseEntity.created(URI.create("/api/docs/" + saved.getId()))
-                .body(DocumentResponse.from(saved));
+                .body(mapper.toResponse(saved));
     }
 
     /** The bytes themselves; GET /api/docs/{id} stays metadata-only. */
@@ -95,7 +98,7 @@ public class DocumentController {
             @PathVariable UUID id, @RequestBody TitleRequest request) {
         User owner = users.authenticate(authorization);
         titles.check(request);
-        return DocumentResponse.from(service.rename(owner, id, request.title()));
+        return mapper.toResponse(service.rename(owner, id, request.title()));
     }
 
     @DeleteMapping("/{id}")

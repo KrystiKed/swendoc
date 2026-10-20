@@ -21,9 +21,11 @@ public class UserController {
     private final UserService service;
     private final Validator<CredentialsRequest> credentials;
     private final Validator<PasswordChangeRequest> passwordChanges;
+    private final UserMapper mapper;
 
-    public UserController(UserService service, ValidatorFactory validators) {
+    public UserController(UserService service, ValidatorFactory validators, UserMapper mapper) {
         this.service = service;
+        this.mapper = mapper;
         this.credentials = validators.forClass(CredentialsRequest.class);
         this.passwordChanges = validators.forClass(PasswordChangeRequest.class);
     }
@@ -32,13 +34,13 @@ public class UserController {
     public ResponseEntity<UserResponse> register(@RequestBody CredentialsRequest request) {
         credentials.check(request);
         User user = service.register(request.username(), request.password());
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toResponse(user));
     }
 
     @PostMapping("/session")
     public SessionResponse login(@RequestBody CredentialsRequest request) {
         credentials.check(request);
-        return SessionResponse.from(service.login(request.username(), request.password()));
+        return mapper.toResponse(service.login(request.username(), request.password()));
     }
 
     @DeleteMapping("/session")
@@ -51,7 +53,7 @@ public class UserController {
     /** The logged-in user, for the profile page. */
     @GetMapping("/users/me")
     public UserResponse me(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
-        return UserResponse.from(service.authenticate(authorization));
+        return mapper.toResponse(service.authenticate(authorization));
     }
 
     @PutMapping("/users/me/password")
