@@ -22,6 +22,7 @@ Nur die Infrastruktur im Container, App lokal:
 docker compose up -d postgres minio
 ./mvnw spring-boot:run      # API auf http://localhost:8080/api
 ./mvnw test                 # Tests, laufen ohne Docker (H2)
+./mvnw verify               # Tests + JaCoCo-Check (min. 70% Line Coverage)
 ```
 
 Frontend (Angular, `frontend/`) im Dev-Modus, API-Calls werden per
@@ -85,19 +86,68 @@ Dokumente und Gruppen anderer User existieren fuer einen User nicht (404 statt 4
 damit keine IDs geleakt werden).
 
 Request- und Response-Bodies gehen ueber DTOs, nicht ueber die Entities:
-`DocumentResponse`, `UserResponse`, `SessionResponse`, `CredentialsRequest`,
-`TitleRequest`. So verlaesst weder `passwordHash` noch der MinIO-`objectKey`
-jemals den Server.
+`DocumentResponse`, `DocumentGroupResponse`, `UserResponse`, `SessionResponse`,
+`CredentialsRequest`, `TitleRequest`, ... So verlaesst weder `passwordHash` noch
+der MinIO-`objectKey` jemals den Server. Entity -> DTO mappen MapStruct-Mapper
+(`DocumentMapper`, `DocumentGroupMapper`, `UserMapper`); die Implementierung wird
+beim Kompilieren generiert. Fehlt ein Feld im Mapping, bricht der Build ab.
+
+## Architektur
+
+```
+Controller -> Service (Interface) -> ServiceImpl -> Repository (JPA)
+                                                 -> FileStorage (MinIO)
+```
+
+- Controller (`DocumentController`, `DocumentGroupController`, `UserController`)
+  kennen nur die Service-Interfaces `DocumentService`, `DocumentGroupService` und
+  `UserService`, nicht die Implementierungen (`...ServiceImpl`).
+- Dateien werden ueber das Interface `FileStorage` gespeichert. `MinioFileStorage`
+  ist die einzige Klasse, die MinIO direkt aufruft (Package `storage`).
+- Eingaben prueft `Validator` (Bean Validation); dieselben Regeln holt sich das
+  Frontend ueber `/api/validation/{form}`.
+
+## Fehlerbehandlung
+
+Jede Schicht hat eigene Exceptions; `GlobalExceptionHandler` (`@RestControllerAdvice`)
+uebersetzt sie zentral in HTTP-Antworten:
+
+| Schicht    | Exception                                                 | Status |
+|------------|-----------------------------------------------------------|--------|
+| Validierung| `ValidationFailedException`                               | 400 `{"errors": [...]}` |
+| Service    | `InvalidCredentialsException`                             | 401    |
+| Service    | `WrongPasswordException`                                  | 403    |
+| Service    | `DocumentNotFoundException`, `DocumentGroupNotFoundException` | 404 |
+| Service    | `UsernameTakenException`                                  | 409    |
+| Storage    | `StorageException` (MinIO nicht erreichbar o.ae.)         | 503    |
+| sonstige   | jede andere Exception                                     | 500    |
+
+Ausser bei Validierungsfehlern ist der Body ein `ProblemDetail` (RFC 9457).
+Bei 503 und 500 steht nur eine allgemeine Meldung im Body, die Ursache landet im Log.
 
 ## Persistenz
 
-JPA/Hibernate mappt `Document`, `User` und `Session` auf PostgreSQL. Der Zugriff
-laeuft ueber das Repository Pattern: `DocumentRepository`, `UserRepository` und
-`SessionRepository` erweitern `JpaRepository`. Die Daten liegen im Docker-Volume
-`postgres-data` und ueberleben `docker compose down`.
+JPA/Hibernate mappt `Document`, `DocumentGroup`, `User` und `Session` auf
+PostgreSQL. Der Zugriff laeuft ueber das Repository Pattern: `DocumentRepository`,
+`DocumentGroupRepository`, `UserRepository` und `SessionRepository` erweitern
+`JpaRepository`. Die Daten liegen im Docker-Volume `postgres-data` und ueberleben
+`docker compose down`.
 
 Passwoerter werden mit PBKDF2-HMAC-SHA256 (210k Iterationen, zufaelligem Salt)
 gehasht. Ein unbekannter Username wird gegen einen Dummy-Hash geprueft, damit die
 Antwortzeit nicht verraet, ob ein User existiert. Usernamen werden ohne fuehrende/
 abschliessende Leerzeichen gespeichert. Das Frontend schickt das Token per
 HTTP-Interceptor mit; jede 401 und der Ablauf von `expiresAt` beenden die Session.
+
+## Tests
+
+`./mvnw test` laeuft ohne Docker: H2 statt PostgreSQL, Repositories und
+`FileStorage` werden mit Mockito gemockt.
+
+- Service-Tests: `DocumentServiceTest`, `DocumentGroupServiceTest`, `UserServiceTest`
+- Controller-Tests (`@WebMvcTest`): `DocumentControllerTest`, `UserControllerTest`,
+  `ValidationRulesControllerTest`
+- `MinioFileStorageTest`, `PasswordsTest`, `SwendocApplicationTests` (Context startet)
+
+JaCoCo schreibt den Coverage-Report nach `target/site/jacoco/index.html`;
+`./mvnw verify` schlaegt fehl, wenn die Line Coverage unter 70% faellt.
