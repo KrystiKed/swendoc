@@ -1,36 +1,36 @@
 package at.technikum.swendoc.document;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import at.technikum.swendoc.DocumentGroup.DocumentGroup;
-import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
-import at.technikum.swendoc.messaging.OcrJobPublisher;
-import at.technikum.swendoc.storage.FileStorage;
-import at.technikum.swendoc.storage.StorageException;
-import at.technikum.swendoc.user.User;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import at.technikum.swendoc.DocumentGroup.DocumentGroup;
+import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.storage.FileStorage;
+import at.technikum.swendoc.storage.StorageException;
+import at.technikum.swendoc.user.User;
 
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
@@ -44,16 +44,13 @@ class DocumentServiceTest {
     @Mock
     private FileStorage storage;
 
-    @Mock
-    private OcrJobPublisher ocrJobs;
-
     private DocumentService service;
     private User alice;
     private User bob;
 
     @BeforeEach
     void setUp() {
-        service = new DocumentServiceImpl(documents, groups, storage, ocrJobs);
+        service = new DocumentServiceImpl(documents, groups, storage);
         alice = user("alice");
         bob = user("bob");
     }
@@ -70,7 +67,6 @@ class DocumentServiceTest {
         assertEquals(key.getValue(), saved.getObjectKey());
         assertEquals(alice, saved.getOwner());
         assertEquals("Invoice", saved.getTitle());
-        verify(ocrJobs).publish(saved.getId(), saved.getObjectKey());
     }
 
     @Test
@@ -80,7 +76,6 @@ class DocumentServiceTest {
         assertThrows(StorageException.class, () -> service.upload(alice, "Invoice", "invoice.pdf",
                 "application/pdf", 3, InputStream.nullInputStream()));
         verify(documents, never()).save(any());
-        verify(ocrJobs, never()).publish(any(), any());
     }
 
     @Test

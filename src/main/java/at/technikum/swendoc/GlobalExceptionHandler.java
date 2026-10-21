@@ -38,6 +38,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ValidationFailedException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ValidationErrorResponse validation(ValidationFailedException e) {
+        log.debug("Validation failed: {}", e.getViolations());
         return new ValidationErrorResponse(e.getViolations());
     }
 
@@ -45,6 +46,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler({DocumentNotFoundException.class, DocumentGroupNotFoundException.class})
     public ProblemDetail notFound(RuntimeException e) {
+        log.debug(e.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 

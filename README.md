@@ -125,6 +125,20 @@ uebersetzt sie zentral in HTTP-Antworten:
 Ausser bei Validierungsfehlern ist der Body ein `ProblemDetail` (RFC 9457).
 Bei 503 und 500 steht nur eine allgemeine Meldung im Body, die Ursache landet im Log.
 
+## Logging
+
+SLF4J/Logback (Spring Boot Default), Level in `application.properties`
+(`logging.level.at.technikum.swendoc`):
+
+- `INFO`: Registrierung, Login, Logout, Passwortwechsel, Upload/Umbenennen/Loeschen
+  von Dokumenten und Gruppen, MinIO-Bucket beim Start
+- `WARN`: fehlgeschlagener Login, falsches aktuelles Passwort
+- `ERROR`: Storage-Fehler (503) und unerwartete Exceptions (500) mit Stacktrace
+- `DEBUG`: einzelne MinIO-Aufrufe, Validierungsfehler, 404
+
+Geloggt werden IDs statt Titeln/Dateinamen, nie Passwoerter oder Tokens.
+Usernamen werden ohne Zeilenumbrueche geloggt, damit niemand Log-Zeilen faelschen kann.
+
 ## Persistenz
 
 JPA/Hibernate mappt `Document`, `DocumentGroup`, `User` und `Session` auf

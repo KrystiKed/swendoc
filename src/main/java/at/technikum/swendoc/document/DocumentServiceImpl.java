@@ -4,27 +4,28 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
-import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
-import at.technikum.swendoc.messaging.OcrJobPublisher;
-import at.technikum.swendoc.storage.FileStorage;
-import at.technikum.swendoc.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.storage.FileStorage;
+import at.technikum.swendoc.user.User;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
 
+    private static final Logger log = LoggerFactory.getLogger(DocumentServiceImpl.class);
+
     private final DocumentRepository repository;
     private final DocumentGroupRepository groups;
     private final FileStorage storage;
-    private final OcrJobPublisher ocrJobs;
 
-    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage,
-                               OcrJobPublisher ocrJobs) {
+    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage) {
         this.repository = repository;
         this.groups = groups;
         this.storage = storage;
-        this.ocrJobs = ocrJobs;
     }
 
     @Override
@@ -48,9 +49,7 @@ public class DocumentServiceImpl implements DocumentService {
         storage.store(objectKey, content, size, contentType);
         Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
-        Document saved = repository.save(document);
-        ocrJobs.publish(saved.getId(), saved.getObjectKey());
-        return saved;
+        return repository.save(document);
     }
 
     @Override
@@ -63,6 +62,7 @@ public class DocumentServiceImpl implements DocumentService {
     public Document rename(User owner, UUID id, String title) {
         Document document = find(owner, id);
         document.setTitle(title);
+        log.info("User {} renamed document {}", owner.getId(), id);
         return repository.save(document);
     }
 
@@ -75,5 +75,6 @@ public class DocumentServiceImpl implements DocumentService {
         groups.findByDocumentsContaining(document).forEach(group -> group.removeDocument(document));
         repository.delete(document);
         storage.delete(document.getObjectKey());
+        log.info("User {} deleted document {}", owner.getId(), id);
     }
 }
