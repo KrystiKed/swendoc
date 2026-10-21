@@ -1,4 +1,5 @@
 package at.technikum.swendoc.messaging;
 
-public class OcrJobMessage {
-}
+import java.util.UUID;
+
+public record OcrJobMessage(UUID documentId, String objectKey) {}

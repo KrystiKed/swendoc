@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
 import at.technikum.swendoc.user.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,13 +24,15 @@ public class DocumentService {
     private final DocumentGroupRepository groups;
     private final MinioClient minio;
     private final String bucket;
+    private final OcrJobPublisher ocrJobPublisher;
 
     public DocumentService(DocumentRepository repository, DocumentGroupRepository groups,
-                           MinioClient minio, @Value("${minio.bucket}") String bucket) {
+                           MinioClient minio, @Value("${minio.bucket}") String bucket, OcrJobPublisher ocrJobPublisher) {
         this.repository = repository;
         this.groups = groups;
         this.minio = minio;
         this.bucket = bucket;
+        this.ocrJobPublisher = ocrJobPublisher;
     }
 
     public List<Document> findAll() {
@@ -54,7 +57,10 @@ public class DocumentService {
         Document document = new Document(title, file.getOriginalFilename(),
                 file.getContentType(), file.getSize(), objectKey);
         document.setOwner(owner);
-        return repository.save(document);
+        Document saved = repository.save(document);
+        ocrJobPublisher.publish(saved.getId(), saved.getObjectKey());
+        return saved;
+
     }
 
     public InputStream download(Document document) throws Exception {

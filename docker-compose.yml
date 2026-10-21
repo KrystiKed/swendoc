@@ -19,7 +19,7 @@ services:
       retries: 15
 
   minio:
-    image: 'quay.io/minio/minio:latest'
+    image: 'pgsty/minio:latest'
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -35,6 +35,26 @@ services:
       timeout: 3s
       retries: 15
 
+  rabbitmq:
+    image: 'rabbitmq:4-management'
+    # Fixed hostname: RabbitMQ stores its data under the node name, which otherwise is the
+    # random container hostname and would orphan the volume on every recreate.
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbitmqadmin
+      RABBITMQ_DEFAULT_PASS: rabbitmqadmin
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
   app:
     build:
       context: .
@@ -44,10 +64,28 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/swendoc
       MINIO_URL: http://minio:9000
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: rabbitmqadmin
+      SPRING_RABBITMQ_PASSWORD: rabbitmqadmin
     depends_on:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  ocrworker:
+    build:
+      context: ./ocrworker
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: rabbitmqadmin
+      SPRING_RABBITMQ_PASSWORD: rabbitmqadmin
+    depends_on:
+      rabbitmq:
         condition: service_healthy
 
   webui:
@@ -62,3 +100,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  rabbitmq-data:
