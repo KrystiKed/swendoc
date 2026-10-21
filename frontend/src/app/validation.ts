@@ -4,7 +4,7 @@ import { Observable, catchError, of, shareReplay } from 'rxjs';
 
 /**
  * Client-side validation for user experience only: the rules and their (localized) messages come
- * from GET /validation/{form}, i.e. from the Bean Validation annotations the server enforces anyway.
+ * from GET /api/validation/{form}, i.e. from the Bean Validation annotations the server enforces anyway.
  * Nothing here is a second copy of a rule.
  */
 
@@ -20,10 +20,11 @@ export type FormRules = Record<string, Rule[]>;
 /** Field name -> first message to show for it. */
 export type FieldErrors = Record<string, string>;
 
-export type Form = 'credentials' | 'upload' | 'title' | 'group';
+export type Form = 'credentials' | 'upload' | 'title' | 'group' | 'password';
 
-const num = (v: unknown, fallback: number) => (typeof v === 'number' ? v : fallback);
-const length = (v: unknown) => (typeof v === 'string' ? v.length : Array.isArray(v) ? v.length : 0);
+const num = (value: unknown, fallback: number) => (typeof value === 'number' ? value : fallback);
+const length = (value: unknown) =>
+  typeof value === 'string' || Array.isArray(value) ? value.length : 0;
 
 /** One check per Bean Validation constraint name; a constraint missing here is left to the server. */
 const CHECKS: Record<string, (value: unknown, a: Record<string, unknown>) => boolean> = {
@@ -50,10 +51,10 @@ export function check(rules: FormRules | undefined, values: Record<string, unkno
 }
 
 /** The field errors of a 400 from the server ({"errors":[{field, message}]}), or null for any other error. */
-export function serverErrors(e: unknown): FieldErrors | null {
-  if (!(e instanceof HttpErrorResponse) || e.status !== 400 || !Array.isArray(e.error?.errors)) return null;
+export function serverErrors(error: unknown): FieldErrors | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 400 || !Array.isArray(error.error?.errors)) return null;
   const errors: FieldErrors = {};
-  for (const { field, message } of e.error.errors as { field: string; message: string }[]) {
+  for (const { field, message } of error.error.errors as { field: string; message: string }[]) {
     errors[field] ??= message;
   }
   return errors;
@@ -70,7 +71,7 @@ export class Validation {
   rules(form: Form): Observable<FormRules> {
     let rules = this.cache.get(form);
     if (!rules) {
-      rules = this.http.get<FormRules>(`/validation/${form}`).pipe(
+      rules = this.http.get<FormRules>(`/api/validation/${form}`).pipe(
         catchError(() => of({})),
         shareReplay(1),
       );

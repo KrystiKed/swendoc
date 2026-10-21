@@ -4,14 +4,14 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
-import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
-import at.technikum.swendoc.messaging.OcrJobPublisher;
-import at.technikum.swendoc.user.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
+import at.technikum.swendoc.user.User;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;

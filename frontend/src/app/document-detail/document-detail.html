@@ -1,0 +1,130 @@
+<div class="bg-win-bg text-black font-sans text-xs min-h-screen flex flex-col select-none antialiased">
+  <app-header />
+
+  <main class="flex-1 p-4 max-w-7xl mx-auto w-full flex flex-col gap-4">
+    <div class="flex items-center gap-1 text-[11px] text-gray-700 font-mono">
+      <a routerLink="/documents" class="text-win-navy underline">Documents</a>
+      <span>&gt;</span>
+      <span class="truncate">{{ doc()?.title ?? (notFound() ? 'Not found' : '...') }}</span>
+    </div>
+
+    @if (notFound()) {
+      <section class="win-outset bg-win-bg p-6 flex flex-col items-center gap-3 text-center" role="alert">
+        <span class="material-symbols-outlined text-[40px] text-red-700">error</span>
+        <div class="font-bold text-sm">Document not found</div>
+        <div class="text-[11px] text-gray-700">It may have been deleted, or the link is wrong.</div>
+        <a routerLink="/documents" class="win-btn px-4 py-1 text-xs font-bold text-win-navy no-underline">Back to Documents</a>
+      </section>
+    } @else if (doc(); as d) {
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <section class="win-outset bg-win-bg p-3.5 lg:col-span-7 flex flex-col gap-3" id="properties">
+          <div class="flex items-center gap-1.5 pb-2 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+            <span class="material-symbols-outlined text-[16px]">info</span>
+            <span>DOCUMENT PROPERTIES</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-[40px] text-gray-600">{{ isImage() ? 'image' : 'draft' }}</span>
+            <div class="min-w-0">
+              <h1 class="font-bold text-sm text-gray-900 truncate select-text">{{ d.title }}</h1>
+              <div class="font-mono text-[11px] text-gray-600 truncate select-text">{{ d.filename }}</div>
+            </div>
+          </div>
+          <div class="win-inset bg-white">
+            <dl class="grid grid-cols-[9rem_1fr] text-[11px] select-text divide-y divide-gray-200">
+              <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">File name</dt>
+              <dd class="py-1.5 px-3 font-mono break-all">{{ d.filename }}</dd>
+              <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">File type</dt>
+              <dd class="py-1.5 px-3 font-mono break-all">{{ d.contentType || '—' }}</dd>
+              <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Size</dt>
+              <dd class="py-1.5 px-3 font-mono">{{ d.size | number }} bytes</dd>
+              <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Uploaded</dt>
+              <dd class="py-1.5 px-3 font-mono">{{ d.uploadedAt | date: 'MM/dd/yyyy hh:mm:ss a' }}</dd>
+              <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Document ID</dt>
+              <dd class="py-1.5 px-3 font-mono break-all">{{ d.id }}</dd>
+            </dl>
+          </div>
+          @if (previewUrl(); as url) {
+            <div class="win-inset bg-white p-2 flex justify-center">
+              <img [src]="url" [alt]="'Preview of ' + d.title" class="max-h-80 max-w-full object-contain" />
+            </div>
+          }
+          <div class="flex flex-wrap gap-1.5 pt-1 border-t border-win-light">
+            <button type="button" class="win-btn inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-win-navy" (click)="download()">
+              <span class="material-symbols-outlined text-[15px]">download</span>Download
+            </button>
+            <button type="button" class="win-btn inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-red-700" (click)="remove()">
+              <span class="material-symbols-outlined text-[15px]">delete</span>Delete
+            </button>
+          </div>
+        </section>
+
+        <div class="lg:col-span-5 flex flex-col gap-4">
+          <section class="win-outset bg-win-bg p-3.5" id="rename-section">
+            <div class="flex items-center gap-1.5 pb-2 mb-3 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+              <span class="material-symbols-outlined text-[16px]">edit</span>
+              <span>RENAME</span>
+            </div>
+            <form class="flex flex-col gap-2" (submit)="$event.preventDefault(); save()">
+              <label class="font-semibold text-gray-800 text-[11px] flex items-center gap-1" for="title-input">
+                <span>Title:</span><span class="text-red-700 font-bold">*</span>
+              </label>
+              <div class="win-inset bg-white p-0.5">
+                <input id="title-input" type="text" required
+                  class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
+                  [value]="title()" (input)="title.set($any($event.target).value)"
+                  [attr.aria-invalid]="!!titleError()" aria-describedby="title-error" />
+              </div>
+              @if (titleError(); as message) {
+                <span id="title-error" class="text-[11px] text-red-700 font-semibold">{{ message }}</span>
+              }
+              <div class="flex justify-end">
+                <button type="submit" class="win-btn py-1 px-4 font-bold text-xs text-win-navy disabled:text-gray-500" [disabled]="!canSave()">
+                  {{ saving() ? 'Saving...' : 'Save Title' }}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="win-outset bg-win-bg p-3.5" id="groups-section">
+            <div class="flex items-center gap-1.5 pb-2 mb-3 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+              <span class="material-symbols-outlined text-[16px]">folder</span>
+              <span>GROUPS</span>
+            </div>
+            @if (groups().length === 0) {
+              <div class="text-[11px] text-gray-800">
+                You have no groups yet. <a routerLink="/groups" class="text-win-navy underline font-semibold">Create one under Groups</a>.
+              </div>
+            } @else {
+              <fieldset class="win-inset bg-white p-2 flex flex-col gap-1 max-h-60 overflow-y-auto">
+                <legend class="sr-only">Groups containing this document</legend>
+                @for (g of groups(); track g.id) {
+                  <label class="flex items-center gap-2 text-xs px-1 py-0.5 hover:bg-blue-50 cursor-pointer">
+                    <input type="checkbox" class="cursor-pointer" [checked]="isMember(g)" [disabled]="pendingGroup() === g.id" (change)="toggleGroup(g)" />
+                    <span class="material-symbols-outlined text-[15px] text-amber-600">folder</span>
+                    <span class="truncate">{{ g.name }}</span>
+                    <span class="ml-auto font-mono text-[10px] text-gray-500">{{ g.documents.length }}</span>
+                  </label>
+                }
+              </fieldset>
+            }
+          </section>
+
+          @if (msg(); as message) {
+            <div class="win-outset bg-[#ffffe1] px-3 py-2 text-[11px]" [class.text-red-700]="message.error" [class.text-gray-900]="!message.error" role="status">{{ message.text }}</div>
+          }
+        </div>
+      </div>
+    } @else if (!error()) {
+      <section class="win-outset bg-win-bg p-6 text-center text-gray-600">Loading document...</section>
+    }
+  </main>
+
+  <footer class="bg-win-bg border-t-2 border-win-light p-1">
+    <div class="max-w-7xl mx-auto flex items-center gap-2 text-[11px] text-gray-800">
+      <div class="win-inset bg-win-bg px-2.5 py-0.5 flex-1 flex items-center gap-1.5 truncate" [class.text-red-700]="error()" role="status">
+        <span class="material-symbols-outlined text-[14px]" [class.text-win-navy]="!error()">{{ error() ? 'error' : 'description' }}</span>
+        <span>{{ error() ?? (doc() ? 'Document: ' + doc()!.filename : 'Document details') }}</span>
+      </div>
+    </div>
+  </footer>
+</div>

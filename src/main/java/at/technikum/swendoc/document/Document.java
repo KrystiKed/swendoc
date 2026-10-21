@@ -29,7 +29,7 @@ public class Document {
     /** Key of the blob in the MinIO bucket. */
     private String objectKey;
 
-    /** Uploader; null for documents uploaded without a session token. */
+    /** Uploader; null only for rows from before uploads required a session (nobody can see those). */
     @ManyToOne
     @JoinColumn(name = "owner_id")
     private User owner;

@@ -1,0 +1,115 @@
+<div class="bg-win-bg text-black font-sans text-xs min-h-screen flex flex-col select-none antialiased">
+  <app-header />
+
+  <main class="flex-1 p-4 max-w-5xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
+    <section class="win-outset bg-win-bg p-3.5 flex flex-col gap-3" id="account">
+      <div class="flex items-center gap-1.5 pb-2 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+        <span class="material-symbols-outlined text-[16px]">account_circle</span>
+        <span>ACCOUNT</span>
+      </div>
+      @if (user(); as u) {
+        <div class="flex items-center gap-3">
+          <div class="win-inset bg-white w-14 h-14 flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[40px] text-win-navy">person</span>
+          </div>
+          <div class="min-w-0">
+            <h1 class="font-bold text-sm text-gray-900 truncate select-text">{{ u.username }}</h1>
+            <div class="text-[11px] text-gray-600">Member since {{ u.createdAt | date: 'MMMM d, y' }}</div>
+          </div>
+        </div>
+        <div class="win-inset bg-white">
+          <dl class="grid grid-cols-[9rem_1fr] text-[11px] select-text divide-y divide-gray-200">
+            <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Username</dt>
+            <dd class="py-1.5 px-3 font-mono break-all">{{ u.username }}</dd>
+            <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">User ID</dt>
+            <dd class="py-1.5 px-3 font-mono break-all">{{ u.id }}</dd>
+            <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Registered</dt>
+            <dd class="py-1.5 px-3 font-mono">{{ u.createdAt | date: 'MM/dd/yyyy hh:mm a' }}</dd>
+            <dt class="py-1.5 px-3 font-semibold text-gray-800 bg-gray-50">Session expires</dt>
+            <dd class="py-1.5 px-3 font-mono">{{ api.session()?.expiresAt | date: 'MM/dd/yyyy hh:mm a' }}</dd>
+          </dl>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <a routerLink="/groups" class="win-inset bg-white p-2 flex flex-col items-center no-underline text-black hover:bg-blue-50">
+            <span class="font-mono font-bold text-lg text-win-navy" id="group-count">{{ groups().length }}</span>
+            <span class="text-[11px] text-gray-700">Groups</span>
+          </a>
+          <a routerLink="/documents" class="win-inset bg-white p-2 flex flex-col items-center no-underline text-black hover:bg-blue-50">
+            <span class="font-mono font-bold text-lg text-win-navy">{{ groupedDocs() }}</span>
+            <span class="text-[11px] text-gray-700">Documents in groups</span>
+          </a>
+        </div>
+      } @else if (!error()) {
+        <div class="py-6 text-center text-gray-600">Loading profile...</div>
+      }
+    </section>
+
+    <section class="win-outset bg-win-bg p-3.5 flex flex-col gap-3" id="password-section">
+      <div class="flex items-center gap-1.5 pb-2 border-b border-win-dark font-bold text-win-navy text-xs tracking-wide">
+        <span class="material-symbols-outlined text-[16px]">key</span>
+        <span>CHANGE PASSWORD</span>
+      </div>
+      <form class="flex flex-col gap-2.5" (submit)="$event.preventDefault(); changePassword()">
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-800 text-[11px] flex items-center gap-1" for="current-password">
+            <span>Current Password:</span><span class="text-red-700 font-bold">*</span>
+          </label>
+          <div class="win-inset bg-white p-0.5">
+            <input id="current-password" type="password" autocomplete="current-password" required
+              class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
+              [value]="current()" (input)="current.set($any($event.target).value)"
+              [attr.aria-invalid]="!!errors()['currentPassword']" aria-describedby="current-password-error" />
+          </div>
+          @if (errors()['currentPassword']; as message) {
+            <span id="current-password-error" class="text-[11px] text-red-700 font-semibold">{{ message }}</span>
+          }
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-800 text-[11px] flex items-center gap-1" for="new-password">
+            <span>New Password:</span><span class="text-red-700 font-bold">*</span>
+          </label>
+          <div class="win-inset bg-white p-0.5">
+            <input id="new-password" type="password" autocomplete="new-password" required
+              class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
+              [value]="next()" (input)="next.set($any($event.target).value)"
+              [attr.aria-invalid]="!!errors()['newPassword']" aria-describedby="new-password-error" />
+          </div>
+          @if (errors()['newPassword']; as message) {
+            <span id="new-password-error" class="text-[11px] text-red-700 font-semibold">{{ message }}</span>
+          }
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="font-semibold text-gray-800 text-[11px] flex items-center gap-1" for="confirm-password">
+            <span>Confirm New Password:</span><span class="text-red-700 font-bold">*</span>
+          </label>
+          <div class="win-inset bg-white p-0.5">
+            <input id="confirm-password" type="password" autocomplete="new-password" required
+              class="w-full bg-transparent border-0 text-xs text-black py-1 px-1 focus:ring-0 focus:outline-none"
+              [value]="confirm()" (input)="confirm.set($any($event.target).value)"
+              [attr.aria-invalid]="!!errors()['confirm']" aria-describedby="confirm-password-error" />
+          </div>
+          @if (errors()['confirm']; as message) {
+            <span id="confirm-password-error" class="text-[11px] text-red-700 font-semibold">{{ message }}</span>
+          }
+        </div>
+        <div class="flex justify-end pt-1 border-t border-win-light">
+          <button type="submit" class="win-btn py-1 px-4 font-bold text-xs text-win-navy disabled:text-gray-500" [disabled]="!canSave()">
+            {{ saving() ? 'Saving...' : 'Change Password' }}
+          </button>
+        </div>
+      </form>
+      @if (msg(); as message) {
+        <div class="text-[11px]" [class.text-red-700]="message.error" [class.text-gray-800]="!message.error" role="status">{{ message.text }}</div>
+      }
+    </section>
+  </main>
+
+  <footer class="bg-win-bg border-t-2 border-win-light p-1">
+    <div class="max-w-7xl mx-auto flex items-center gap-2 text-[11px] text-gray-800">
+      <div class="win-inset bg-win-bg px-2.5 py-0.5 flex-1 flex items-center gap-1.5 truncate" [class.text-red-700]="error()" role="status">
+        <span class="material-symbols-outlined text-[14px]" [class.text-win-navy]="!error()">{{ error() ? 'error' : 'badge' }}</span>
+        <span>{{ error() ?? 'Profile: ' + (user()?.username ?? '') }}</span>
+      </div>
+    </div>
+  </footer>
+</div>

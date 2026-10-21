@@ -1,42 +1,9 @@
 <div class="bg-win-bg text-black font-sans text-xs min-h-screen flex flex-col select-none antialiased">
-  <header class="bg-win-bg border-b-2 border-win-dark shadow-sm">
-    <div class="bg-gradient-to-r from-win-navy to-win-navy-gradient text-white px-4 py-2 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 flex items-center justify-center shrink-0"><img alt="WinDoc logo" class="w-8 h-8" src="logo.svg" /></div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-sm tracking-wide">WinDoc Web DMS</span>
-            <span class="text-[10px] font-mono bg-white/20 px-1.5 py-0.5 font-normal">v4.0 Web Edition</span>
-          </div>
-          <span class="text-[11px] text-gray-200">Enterprise Shared Document Repository</span>
-        </div>
-      </div>
-      <div class="flex items-center gap-3 text-xs">
-        <div class="flex items-center gap-1.5 font-mono text-[11px] bg-black/25 px-2.5 py-1 border border-white/20">
-          <span class="material-symbols-outlined text-[14px] text-teal-300">account_circle</span>
-          <span>USER: <strong class="text-white">{{ api.session()?.username }}</strong></span>
-        </div>
-        <button type="button" class="text-gray-200 hover:text-white underline font-semibold text-[11px] cursor-pointer" (click)="logout()">Log Out</button>
-      </div>
-    </div>
-    <nav class="px-3 py-1 flex items-center justify-between border-t border-win-light text-xs">
-      <div class="flex items-center gap-1">
-        <a routerLink="/documents" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5 no-underline">
-          <span class="material-symbols-outlined text-[15px] text-win-navy">folder_shared</span><span><u>D</u>ocuments</span>
-        </a>
-        <button type="button" class="win-btn font-semibold px-3 py-1 text-black bg-[#e2ded6] flex items-center gap-1.5" aria-current="page">
-          <span class="material-symbols-outlined text-[15px] text-gray-700">category</span><span><u>G</u>roups</span>
-        </button>
-        <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" [attr.aria-expanded]="showHelp()" (click)="showHelp.set(!showHelp())">
-          <span class="material-symbols-outlined text-[15px] text-win-navy">help</span><span><u>H</u>elp</span>
-        </button>
-      </div>
-      <div class="text-[11px] font-mono text-gray-600 flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full inline-block" [class]="error() ? 'bg-red-600' : 'bg-emerald-600'"></span>
-        <span>{{ error() ? 'Disconnected' : 'Connected' }}</span>
-      </div>
-    </nav>
-  </header>
+  <app-header>
+    <button type="button" class="win-btn px-3 py-1 text-gray-800 hover:text-black flex items-center gap-1.5" [attr.aria-expanded]="showHelp()" (click)="showHelp.set(!showHelp())">
+      <span class="material-symbols-outlined text-[15px] text-win-navy">help</span><span>Help</span>
+    </button>
+  </app-header>
 
   <main class="flex-1 p-4 max-w-7xl mx-auto w-full flex flex-col gap-4">
     @if (showHelp()) {
@@ -73,8 +40,8 @@
           </button>
         </div>
       </form>
-      @if (createMsg(); as m) {
-        <div class="mt-2 text-[11px]" [class.text-red-700]="m.error" [class.text-gray-800]="!m.error" role="status">{{ m.text }}</div>
+      @if (createMsg(); as message) {
+        <div class="mt-2 text-[11px]" [class.text-red-700]="message.error" [class.text-gray-800]="!message.error" role="status">{{ message.text }}</div>
       }
     </section>
 
@@ -130,7 +97,6 @@
         <span class="material-symbols-outlined text-[14px]" [class.text-win-navy]="!error()">{{ error() ? 'error' : 'category' }}</span>
         <span>{{ error() ?? 'My Groups: ' + groups().length }}</span>
       </div>
-      <div class="win-inset bg-win-bg px-2 py-0.5 w-24 text-center font-mono text-[11px] shrink-0 text-gray-700">{{ now() | date: 'hh:mm a' }}</div>
     </div>
   </footer>
 </div>

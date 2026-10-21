@@ -17,7 +17,7 @@ class ValidationRulesControllerTest {
 
     @Test
     void publishesTheAnnotationRulesWithInterpolatedMessages() throws Exception {
-        mockMvc.perform(get("/validation/credentials"))
+        mockMvc.perform(get("/api/validation/credentials"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.password.length()").value(2))
                 .andExpect(jsonPath("$.password[0].constraint").value("NotBlank"))
@@ -29,7 +29,7 @@ class ValidationRulesControllerTest {
 
     @Test
     void localizesMessagesAndCoversCustomConstraints() throws Exception {
-        mockMvc.perform(get("/validation/upload").header("Accept-Language", "de"))
+        mockMvc.perform(get("/api/validation/upload").header("Accept-Language", "de"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.file[0].constraint").value("NotNull"))
                 .andExpect(jsonPath("$.file[1].constraint").value("FileSize"))
@@ -39,6 +39,6 @@ class ValidationRulesControllerTest {
 
     @Test
     void unknownFormIsNotFound() throws Exception {
-        mockMvc.perform(get("/validation/nope")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/validation/nope")).andExpect(status().isNotFound());
     }
 }

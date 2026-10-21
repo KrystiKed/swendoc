@@ -5,7 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
-/** Turned into a 400 with one entry per violated rule by {@link ValidationExceptionHandler}. */
+/** Turned into a 400 with one entry per violated rule by {@link at.technikum.swendoc.GlobalExceptionHandler}. */
 public class ValidationFailedException extends RuntimeException {
 
     private final List<FieldViolation> violations;

@@ -4,6 +4,7 @@ import at.technikum.swendoc.DocumentGroup.GroupNameRequest;
 import at.technikum.swendoc.document.TitleRequest;
 import at.technikum.swendoc.document.UploadRequest;
 import at.technikum.swendoc.user.CredentialsRequest;
+import at.technikum.swendoc.user.PasswordChangeRequest;
 import jakarta.validation.MessageInterpolator;
 import jakarta.validation.ValidationException;
 import jakarta.validation.metadata.ConstraintDescriptor;
@@ -25,7 +26,7 @@ import org.springframework.http.HttpStatus;
  * very rules the server enforces instead of a hand-copied set. Messages follow Accept-Language.
  */
 @RestController
-@RequestMapping("/validation")
+@RequestMapping("/api/validation")
 public class ValidationRulesController {
 
     /** Forms the frontend can ask for; the annotations on these records are the single source of rules. */
@@ -33,7 +34,8 @@ public class ValidationRulesController {
             "credentials", CredentialsRequest.class,
             "upload", UploadRequest.class,
             "title", TitleRequest.class,
-            "group", GroupNameRequest.class);
+            "group", GroupNameRequest.class,
+            "password", PasswordChangeRequest.class);
 
     private static final Set<String> NON_RULE_ATTRIBUTES = Set.of("message", "groups", "payload");
     private static final Set<String> REQUIRED = Set.of("NotNull", "NotBlank", "NotEmpty");

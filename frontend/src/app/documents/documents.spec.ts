@@ -15,7 +15,7 @@ describe('Documents', () => {
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(Documents);
     await fixture.whenStable();
-    http.expectOne('/docs').flush([doc('1', 'Alpha', 'PDF'), doc('2', 'Beta', null)]);
+    http.expectOne('/api/docs').flush([doc('1', 'Alpha', 'PDF'), doc('2', 'Beta', null)]);
     await fixture.whenStable();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelectorAll('tbody tr').length).toBe(2);
@@ -33,9 +33,9 @@ describe('Documents', () => {
     const http = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(Documents);
     await fixture.whenStable();
-    http.expectOne('/docs').flush([doc('1', 'Alpha', null)]);
+    http.expectOne('/api/docs').flush([doc('1', 'Alpha', null)]);
     const group = { id: 'g1', name: 'Invoices', createdAt: '2026-01-02T10:00:00Z', documents: [] };
-    http.expectOne('/groups').flush([group]);
+    http.expectOne('/api/groups').flush([group]);
     await fixture.whenStable();
     const el: HTMLElement = fixture.nativeElement;
 
@@ -44,7 +44,7 @@ describe('Documents', () => {
     expect(el.querySelector('[role=dialog]')?.textContent).toContain('Alpha');
     [...el.querySelectorAll<HTMLButtonElement>('[role=dialog] button')].find(b => b.textContent?.trim() === 'Add')!.click();
 
-    const req = http.expectOne(r => r.method === 'PUT' && r.url === '/groups/g1/documents/1');
+    const req = http.expectOne(r => r.method === 'PUT' && r.url === '/api/groups/g1/documents/1');
     req.flush({ ...group, documents: [doc('1', 'Alpha', null)] });
     await fixture.whenStable();
     expect(el.querySelector('[role=dialog]')).toBeNull();
@@ -57,9 +57,9 @@ describe('Documents', () => {
     const fixture = TestBed.createComponent(Documents);
     await fixture.whenStable();
     const alpha = doc('1', 'Alpha', null);
-    http.expectOne('/docs').flush([alpha, doc('2', 'Beta', null)]);
+    http.expectOne('/api/docs').flush([alpha, doc('2', 'Beta', null)]);
     const group = { id: 'g1', name: 'Invoices', createdAt: '2026-01-02T10:00:00Z', documents: [alpha] };
-    http.expectOne('/groups').flush([group]);
+    http.expectOne('/api/groups').flush([group]);
     await fixture.whenStable();
     const el: HTMLElement = fixture.nativeElement;
     const rows = [...el.querySelectorAll('tbody tr')];
@@ -72,7 +72,7 @@ describe('Documents', () => {
     await fixture.whenStable();
     [...el.querySelectorAll<HTMLButtonElement>('[role=dialog] button')].find(b => b.textContent?.trim() === 'Remove')!.click();
 
-    http.expectOne(r => r.method === 'DELETE' && r.url === '/groups/g1/documents/1').flush({ ...group, documents: [] });
+    http.expectOne(r => r.method === 'DELETE' && r.url === '/api/groups/g1/documents/1').flush({ ...group, documents: [] });
     await fixture.whenStable();
     expect(el.textContent).toContain('"Alpha" removed from group "Invoices".');
     expect(alphaRow.textContent).not.toContain('Invoices');

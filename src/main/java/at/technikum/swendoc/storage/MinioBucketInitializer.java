@@ -1,4 +1,4 @@
-package at.technikum.swendoc.document;
+package at.technikum.swendoc.storage;
 
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
