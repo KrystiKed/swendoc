@@ -8,8 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
 import at.technikum.swendoc.storage.FileStorage;
 import at.technikum.swendoc.user.User;
 
@@ -21,11 +24,14 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository repository;
     private final DocumentGroupRepository groups;
     private final FileStorage storage;
+    private final OcrJobPublisher ocrJobs;
 
-    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage) {
+    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage,
+                               OcrJobPublisher ocrJobs) {
         this.repository = repository;
         this.groups = groups;
         this.storage = storage;
+        this.ocrJobs = ocrJobs;
     }
 
     @Override
@@ -49,7 +55,24 @@ public class DocumentServiceImpl implements DocumentService {
         storage.store(objectKey, content, size, contentType);
         Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
-        return repository.save(document);
+        Document saved = repository.save(document);
+        publishOcrJob(saved);
+        return saved;
+    }
+
+    // Queue the OCR job only once the row is committed, so the worker never sees an unknown document.
+    private void publishOcrJob(Document document) {
+        Runnable publish = () -> ocrJobs.publish(document.getId(), document.getObjectKey());
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publish.run();
+                }
+            });
+        } else {
+            publish.run();
+        }
     }
 
     @Override
