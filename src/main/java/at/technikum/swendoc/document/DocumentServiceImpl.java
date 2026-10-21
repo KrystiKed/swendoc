@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
 import at.technikum.swendoc.storage.FileStorage;
 import at.technikum.swendoc.user.User;
 import org.springframework.stereotype.Service;
@@ -16,11 +17,14 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository repository;
     private final DocumentGroupRepository groups;
     private final FileStorage storage;
+    private final OcrJobPublisher ocrJobs;
 
-    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage) {
+    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage,
+                               OcrJobPublisher ocrJobs) {
         this.repository = repository;
         this.groups = groups;
         this.storage = storage;
+        this.ocrJobs = ocrJobs;
     }
 
     @Override
@@ -44,7 +48,9 @@ public class DocumentServiceImpl implements DocumentService {
         storage.store(objectKey, content, size, contentType);
         Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
-        return repository.save(document);
+        Document saved = repository.save(document);
+        ocrJobs.publish(saved.getId(), saved.getObjectKey());
+        return saved;
     }
 
     @Override

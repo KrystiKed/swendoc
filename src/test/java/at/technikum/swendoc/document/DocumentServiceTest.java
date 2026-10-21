@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import at.technikum.swendoc.DocumentGroup.DocumentGroup;
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
 import at.technikum.swendoc.storage.FileStorage;
 import at.technikum.swendoc.storage.StorageException;
 import at.technikum.swendoc.user.User;
@@ -43,13 +44,16 @@ class DocumentServiceTest {
     @Mock
     private FileStorage storage;
 
+    @Mock
+    private OcrJobPublisher ocrJobs;
+
     private DocumentService service;
     private User alice;
     private User bob;
 
     @BeforeEach
     void setUp() {
-        service = new DocumentServiceImpl(documents, groups, storage);
+        service = new DocumentServiceImpl(documents, groups, storage, ocrJobs);
         alice = user("alice");
         bob = user("bob");
     }
@@ -66,6 +70,7 @@ class DocumentServiceTest {
         assertEquals(key.getValue(), saved.getObjectKey());
         assertEquals(alice, saved.getOwner());
         assertEquals("Invoice", saved.getTitle());
+        verify(ocrJobs).publish(saved.getId(), saved.getObjectKey());
     }
 
     @Test
@@ -75,6 +80,7 @@ class DocumentServiceTest {
         assertThrows(StorageException.class, () -> service.upload(alice, "Invoice", "invoice.pdf",
                 "application/pdf", 3, InputStream.nullInputStream()));
         verify(documents, never()).save(any());
+        verify(ocrJobs, never()).publish(any(), any());
     }
 
     @Test
