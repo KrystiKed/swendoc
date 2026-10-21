@@ -3,6 +3,8 @@ package at.technikum.swendoc.DocumentGroup;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,8 @@ import at.technikum.swendoc.user.User;
 
 @Service
 public class DocumentGroupServiceImpl implements DocumentGroupService {
+
+    private static final Logger log = LoggerFactory.getLogger(DocumentGroupServiceImpl.class);
 
     private final DocumentGroupRepository groups;
     private final DocumentRepository documents;
@@ -43,7 +47,9 @@ public class DocumentGroupServiceImpl implements DocumentGroupService {
     @Override
     @Transactional
     public DocumentGroup create(User owner, String name) {
-        return groups.save(new DocumentGroup(name, owner));
+        DocumentGroup group = groups.save(new DocumentGroup(name, owner));
+        log.info("User {} created group {}", owner.getId(), group.getId());
+        return group;
     }
 
     @Override
@@ -51,6 +57,7 @@ public class DocumentGroupServiceImpl implements DocumentGroupService {
     public DocumentGroup rename(User owner, UUID id, String name) {
         DocumentGroup group = find(owner, id);
         group.setName(name);
+        log.info("User {} renamed group {}", owner.getId(), id);
         return groups.save(group);
     }
 
@@ -58,6 +65,7 @@ public class DocumentGroupServiceImpl implements DocumentGroupService {
     @Transactional
     public void delete(User owner, UUID id) {
         groups.delete(find(owner, id));
+        log.info("User {} deleted group {}", owner.getId(), id);
     }
 
     @Override
@@ -65,6 +73,7 @@ public class DocumentGroupServiceImpl implements DocumentGroupService {
     public DocumentGroup addDocument(User owner, UUID groupId, UUID documentId) {
         DocumentGroup group = find(owner, groupId);
         group.addDocument(ownDocument(owner, documentId));
+        log.info("User {} added document {} to group {}", owner.getId(), documentId, groupId);
         return groups.save(group);
     }
 
@@ -73,6 +82,7 @@ public class DocumentGroupServiceImpl implements DocumentGroupService {
     public DocumentGroup removeDocument(User owner, UUID groupId, UUID documentId) {
         DocumentGroup group = find(owner, groupId);
         group.removeDocument(ownDocument(owner, documentId));
+        log.info("User {} removed document {} from group {}", owner.getId(), documentId, groupId);
         return groups.save(group);
     }
 

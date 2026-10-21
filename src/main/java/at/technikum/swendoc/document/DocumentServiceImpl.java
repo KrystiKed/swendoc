@@ -7,11 +7,15 @@ import java.util.UUID;
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
 import at.technikum.swendoc.storage.FileStorage;
 import at.technikum.swendoc.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
+
+    private static final Logger log = LoggerFactory.getLogger(DocumentServiceImpl.class);
 
     private final DocumentRepository repository;
     private final DocumentGroupRepository groups;
@@ -44,7 +48,9 @@ public class DocumentServiceImpl implements DocumentService {
         storage.store(objectKey, content, size, contentType);
         Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
-        return repository.save(document);
+        Document saved = repository.save(document);
+        log.info("User {} uploaded document {} ({} bytes, {})", owner.getId(), saved.getId(), size, contentType);
+        return saved;
     }
 
     @Override
@@ -57,6 +63,7 @@ public class DocumentServiceImpl implements DocumentService {
     public Document rename(User owner, UUID id, String title) {
         Document document = find(owner, id);
         document.setTitle(title);
+        log.info("User {} renamed document {}", owner.getId(), id);
         return repository.save(document);
     }
 
@@ -69,5 +76,6 @@ public class DocumentServiceImpl implements DocumentService {
         groups.findByDocumentsContaining(document).forEach(group -> group.removeDocument(document));
         repository.delete(document);
         storage.delete(document.getObjectKey());
+        log.info("User {} deleted document {}", owner.getId(), id);
     }
 }

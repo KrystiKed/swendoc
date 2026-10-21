@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -77,6 +79,16 @@ class UserServiceTest {
 
         assertThrows(InvalidCredentialsException.class, () -> userService.login("ghost", "password123"));
         verify(sessionRepository, never()).save(any());
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void failedLoginIsLoggedWithoutLettingTheUsernameForgeLogLines(CapturedOutput output) {
+        when(userRepository.findByUsername("eve\nINFO forged")).thenReturn(Optional.empty());
+
+        assertThrows(InvalidCredentialsException.class, () -> userService.login("eve\nINFO forged", "whatever1"));
+
+        assertTrue(output.getOut().contains("Failed login for username eve_INFO forged"));
     }
 
     @Test
