@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import at.technikum.swendoc.DocumentGroup.DocumentGroupRepository;
+import at.technikum.swendoc.messaging.OcrJobPublisher;
 import at.technikum.swendoc.storage.FileStorage;
 import at.technikum.swendoc.user.User;
 import org.slf4j.Logger;
@@ -20,11 +21,14 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository repository;
     private final DocumentGroupRepository groups;
     private final FileStorage storage;
+    private final OcrJobPublisher ocrJobPublisher;
 
-    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage) {
+    public DocumentServiceImpl(DocumentRepository repository, DocumentGroupRepository groups, FileStorage storage,
+                               OcrJobPublisher ocrJobPublisher) {
         this.repository = repository;
         this.groups = groups;
         this.storage = storage;
+        this.ocrJobPublisher = ocrJobPublisher;
     }
 
     @Override
@@ -49,6 +53,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document document = new Document(title, filename, contentType, size, objectKey);
         document.setOwner(owner);
         Document saved = repository.save(document);
+        ocrJobPublisher.publish(saved.getId(), saved.getObjectKey());
         log.info("User {} uploaded document {} ({} bytes, {})", owner.getId(), saved.getId(), size, contentType);
         return saved;
     }
