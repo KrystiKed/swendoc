@@ -57,6 +57,7 @@ public class DocumentServiceImpl implements DocumentService {
         document.setOwner(owner);
         Document saved = repository.save(document);
         publishOcrJob(saved);
+        log.info("User {} uploaded document {} ({} bytes, {})", owner.getId(), saved.getId(), size, contentType);
         return saved;
     }
 
