@@ -90,8 +90,8 @@ public class DocumentServiceImpl implements DocumentService {
         return repository.save(document);
     }
 
-    // ponytail: blob is removed after the row commits; an orphaned blob on a crash here is
-    // harmless storage waste. Add an outbox/cleanup job only if that shows up in grading.
+    // The blob is removed after the row is deleted; a crash in between only leaves an orphaned
+    // blob (wasted storage, no broken reference). A cleanup job would remove those if needed.
     @Override
     @Transactional
     public void delete(User owner, UUID id) {
